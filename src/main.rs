@@ -42,6 +42,8 @@ enum EmployeeUsecaseError {
     NotFound(EmployeeDaoError),
     #[error("employee is not hourly salary")]
     NotHourlySalary,
+    #[error("employee is not commissioned salary")]
+    NotCommissionedSalary,
     #[error("update employee failed: {0}")]
     UpdateEmployeeFailed(EmployeeDaoError),
 }
@@ -112,6 +114,7 @@ impl PaymentClassification for HourlyClassification {
 struct CommissionedClassification {
     salary: f64,
     commission_rate: f64,
+    sales_receipts: Vec<(NaiveDate, f64)>,
 }
 impl PaymentClassification for CommissionedClassification {
     fn as_any(&self) -> &dyn Any {
@@ -317,6 +320,7 @@ impl AddEmployeeTransaction<()> for AddCommissionedEmployeeTransaction {
         Box::new(CommissionedClassification {
             salary: self.salary,
             commission_rate: self.commission_rate,
+            sales_receipts: vec![],
         })
     }
     fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
@@ -377,6 +381,40 @@ impl TimeCardTransaction {
     }
 }
 
+struct SalesReceiptTransaction {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+    date: NaiveDate,
+    amount: f64,
+}
+impl HaveEmployeeDao<()> for SalesReceiptTransaction {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl SalesReceiptTransaction {
+    pub fn execute<'a>(&'a self) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeUsecaseError> + 'a {
+        tx_rs::with_tx(move |ctx| {
+            let mut emp = self
+                .dao()
+                .fetch(self.emp_id)
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::NotFound)?;
+            let commissioned = emp
+                .classification
+                .as_any_mut()
+                .downcast_mut::<CommissionedClassification>()
+                .ok_or(EmployeeUsecaseError::NotCommissionedSalary)?;
+            commissioned.sales_receipts.push((self.date, self.amount));
+            self.dao()
+                .update(emp)
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+        })
+    }
+}
+
 fn main() {
     let db = MockDb {
         employee: Rc::new(RefCell::new(HashMap::new())),
@@ -404,6 +442,14 @@ fn main() {
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
+    let req = TimeCardTransaction {
+        db: db.clone(),
+        emp_id: 2,
+        date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
+        hours: 8.0,
+    };
+    let _ = req.execute().run(&mut ()).expect("time card");
+
     let req = AddCommissionedEmployeeTransaction {
         db: db.clone(),
         emp_id: 3,
@@ -416,13 +462,13 @@ fn main() {
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = TimeCardTransaction {
+    let req = SalesReceiptTransaction {
         db: db.clone(),
-        emp_id: 2,
+        emp_id: 3,
         date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
-        hours: 8.0,
+        amount: 1000.00,
     };
-    let _ = req.execute().run(&mut ()).expect("time card");
+    let _ = req.execute().run(&mut ()).expect("sales receipt");
 
     for emp_id in 1..=3 {
         let req = DeleteEmployeeTransaction {
