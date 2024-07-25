@@ -66,6 +66,7 @@ trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
         let classification = self.get_classification();
         let schedule = self.get_schedule();
         let method = Box::new(HoldMethod);
+        let affiliation = Box::new(NoAffiliation);
         let emp = Employee {
             emp_id,
             name,
@@ -73,6 +74,7 @@ trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
             classification,
             schedule,
             method,
+            affiliation,
         };
         self.dao()
             .insert(emp)
@@ -194,17 +196,41 @@ impl PaymentClassification for CommissionedClassification {
     }
 }
 
-trait PaymentSchedule: DynClone + Debug {}
+trait PaymentSchedule: DynClone + Debug {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
 dyn_clone::clone_trait_object!(PaymentSchedule);
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct MonthlySchedule;
-impl PaymentSchedule for MonthlySchedule {}
+impl PaymentSchedule for MonthlySchedule {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct WeeklySchedule;
-impl PaymentSchedule for WeeklySchedule {}
+impl PaymentSchedule for WeeklySchedule {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct BiweeklySchedule;
-impl PaymentSchedule for BiweeklySchedule {}
+impl PaymentSchedule for BiweeklySchedule {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 trait PaymentMethod: DynClone + Debug {}
 dyn_clone::clone_trait_object!(PaymentMethod);
@@ -223,6 +249,18 @@ struct DirectMethod {
 }
 impl PaymentMethod for DirectMethod {}
 
+trait Affiliation: DynClone + Debug {}
+dyn_clone::clone_trait_object!(Affiliation);
+#[derive(Debug, Clone, PartialEq)]
+struct UnionAffiliation {
+    member_id: u32,
+    dues: f64,
+}
+impl Affiliation for UnionAffiliation {}
+#[derive(Debug, Clone, PartialEq)]
+struct NoAffiliation;
+impl Affiliation for NoAffiliation {}
+
 type EmployeeId = u32;
 
 #[derive(Debug, Clone)]
@@ -233,6 +271,7 @@ struct Employee {
     classification: Box<dyn PaymentClassification>,
     schedule: Box<dyn PaymentSchedule>,
     method: Box<dyn PaymentMethod>,
+    affiliation: Box<dyn Affiliation>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -252,6 +291,17 @@ struct SalesReceipt {
     amount: f64,
 }
 impl SalesReceipt {
+    fn new(date: NaiveDate, amount: f64) -> Self {
+        Self { date, amount }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct ServiceCharge {
+    date: NaiveDate,
+    amount: f64,
+}
+impl ServiceCharge {
     fn new(date: NaiveDate, amount: f64) -> Self {
         Self { date, amount }
     }
