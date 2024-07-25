@@ -80,6 +80,75 @@ trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     }
 }
 
+trait DeleteEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.dao()
+            .delete(self.get_emp_id())
+            .map_err(EmployeeUsecaseError::UnregisterEmployeeFailed)
+    }
+}
+
+trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+    fn get_date(&self) -> NaiveDate;
+    fn get_hours(&self) -> f64;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
+        tx_rs::with_tx(move |ctx| {
+            let mut emp = self
+                .dao()
+                .fetch(self.get_emp_id())
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::NotFound)?;
+            let hourly = emp
+                .classification
+                .as_any_mut()
+                .downcast_mut::<HourlyClassification>()
+                .ok_or(EmployeeUsecaseError::NotHourlySalary)?;
+            hourly
+                .timecards
+                .push(TimeCard::new(self.get_date(), self.get_hours()));
+            self.dao()
+                .update(emp)
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+        })
+    }
+}
+
+trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+    fn get_date(&self) -> NaiveDate;
+    fn get_amount(&self) -> f64;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
+        tx_rs::with_tx(move |ctx| {
+            let mut emp = self
+                .dao()
+                .fetch(self.get_emp_id())
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::NotFound)?;
+            let commissioned = emp
+                .classification
+                .as_any_mut()
+                .downcast_mut::<CommissionedClassification>()
+                .ok_or(EmployeeUsecaseError::NotCommissionedSalary)?;
+            commissioned
+                .sales_receipts
+                .push(SalesReceipt::new(self.get_date(), self.get_amount()));
+            self.dao()
+                .update(emp)
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+        })
+    }
+}
+
 trait PaymentClassification: DynClone + Debug {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -350,92 +419,67 @@ impl AddEmployeeTransaction<()> for AddCommissionedEmployeeTransaction {
     }
 }
 
-struct DeleteEmployeeTransaction {
+struct DeleteEmployeeTransactionImpl {
     db: MockDb,
 
     emp_id: EmployeeId,
 }
-impl HaveEmployeeDao<()> for DeleteEmployeeTransaction {
+impl HaveEmployeeDao<()> for DeleteEmployeeTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
         Box::new(&self.db)
     }
 }
-impl DeleteEmployeeTransaction {
-    pub fn execute<'a>(&'a self) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeUsecaseError> + 'a {
-        let emp_id = self.emp_id;
-        self.dao()
-            .delete(emp_id)
-            .map_err(EmployeeUsecaseError::UnregisterEmployeeFailed)
+impl DeleteEmployeeTransaction<()> for DeleteEmployeeTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
     }
 }
 
-struct TimeCardTransaction {
+struct TimeCardTransactionImpl {
     db: MockDb,
 
     emp_id: EmployeeId,
     date: NaiveDate,
     hours: f64,
 }
-impl HaveEmployeeDao<()> for TimeCardTransaction {
+impl HaveEmployeeDao<()> for TimeCardTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
         Box::new(&self.db)
     }
 }
-impl TimeCardTransaction {
-    pub fn execute<'a>(&'a self) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeUsecaseError> + 'a {
-        tx_rs::with_tx(move |ctx| {
-            let mut emp = self
-                .dao()
-                .fetch(self.emp_id)
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
-            let hourly = emp
-                .classification
-                .as_any_mut()
-                .downcast_mut::<HourlyClassification>()
-                .ok_or(EmployeeUsecaseError::NotHourlySalary)?;
-            hourly.timecards.push(TimeCard::new(self.date, self.hours));
-            self.dao()
-                .update(emp)
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
-        })
+impl TimeCardTransaction<()> for TimeCardTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+    fn get_date(&self) -> NaiveDate {
+        self.date
+    }
+    fn get_hours(&self) -> f64 {
+        self.hours
     }
 }
 
-struct SalesReceiptTransaction {
+struct SalesReceiptTransactionImpl {
     db: MockDb,
 
     emp_id: EmployeeId,
     date: NaiveDate,
     amount: f64,
 }
-impl HaveEmployeeDao<()> for SalesReceiptTransaction {
+impl HaveEmployeeDao<()> for SalesReceiptTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
         Box::new(&self.db)
     }
 }
-impl SalesReceiptTransaction {
-    pub fn execute<'a>(&'a self) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeUsecaseError> + 'a {
-        tx_rs::with_tx(move |ctx| {
-            let mut emp = self
-                .dao()
-                .fetch(self.emp_id)
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
-            let commissioned = emp
-                .classification
-                .as_any_mut()
-                .downcast_mut::<CommissionedClassification>()
-                .ok_or(EmployeeUsecaseError::NotCommissionedSalary)?;
-            commissioned
-                .sales_receipts
-                .push(SalesReceipt::new(self.date, self.amount));
-            self.dao()
-                .update(emp)
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
-        })
+impl SalesReceiptTransaction<()> for SalesReceiptTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+    fn get_date(&self) -> NaiveDate {
+        self.date
+    }
+    fn get_amount(&self) -> f64 {
+        self.amount
     }
 }
 
@@ -466,7 +510,7 @@ fn main() {
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = TimeCardTransaction {
+    let req = TimeCardTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
@@ -486,7 +530,7 @@ fn main() {
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = SalesReceiptTransaction {
+    let req = SalesReceiptTransactionImpl {
         db: db.clone(),
         emp_id: 3,
         date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
@@ -495,7 +539,7 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("sales receipt");
 
     for emp_id in 1..=3 {
-        let req = DeleteEmployeeTransaction {
+        let req = DeleteEmployeeTransactionImpl {
             db: db.clone(),
             emp_id,
         };
