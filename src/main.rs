@@ -380,12 +380,10 @@ impl TimeCardTransaction {
                 .downcast_mut::<HourlyClassification>()
                 .ok_or(EmployeeUsecaseError::NotHourlySalary)?;
             hourly.timecards.insert(self.date, self.hours);
-            let _ = self
-                .dao()
+            self.dao()
                 .update(emp)
                 .run(ctx)
-                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)?;
-            Ok(())
+                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
         })
     }
 }
