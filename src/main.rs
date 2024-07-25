@@ -1,5 +1,7 @@
+use chrono::NaiveDate;
 use core::fmt::Debug;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use dyn_clone::DynClone;
+use std::{any::Any, cell::RefCell, collections::HashMap, rc::Rc};
 use thiserror::Error;
 use tx_rs::Tx;
 
@@ -9,6 +11,10 @@ enum EmployeeDaoError {
     InsertError(String),
     #[error("delete error: {0}")]
     DeleteError(String),
+    #[error("fetch error: {0}")]
+    FetchError(String),
+    #[error("update error: {0}")]
+    UpdateError(String),
 }
 trait EmployeeDao<Ctx> {
     fn insert(
@@ -16,6 +22,11 @@ trait EmployeeDao<Ctx> {
         emp: Employee,
     ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeDaoError>;
     fn delete(&self, emp_id: EmployeeId) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
+    fn fetch(
+        &self,
+        emp_id: EmployeeId,
+    ) -> impl tx_rs::Tx<Ctx, Item = Employee, Err = EmployeeDaoError>;
+    fn update(&self, emp: Employee) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
 }
 trait HaveEmployeeDao<Ctx> {
     fn dao(&self) -> Box<&impl EmployeeDao<Ctx>>;
@@ -27,6 +38,12 @@ enum EmployeeUsecaseError {
     RegisterEmployeeFailed(EmployeeDaoError),
     #[error("unregister employee failed: {0}")]
     UnregisterEmployeeFailed(EmployeeDaoError),
+    #[error("employee not found: {0}")]
+    NotFound(EmployeeDaoError),
+    #[error("employee is not hourly salary")]
+    NotHourlySalary,
+    #[error("update employee failed: {0}")]
+    UpdateEmployeeFailed(EmployeeDaoError),
 }
 
 trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
@@ -75,25 +92,52 @@ trait DeleteEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     }
 }
 
-trait PaymentClassification: Debug {}
+trait PaymentClassification: DynClone + Debug {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+dyn_clone::clone_trait_object!(PaymentClassification);
 #[derive(Debug, Clone, PartialEq)]
 struct SalariedClassification {
     salary: f64,
 }
-impl PaymentClassification for SalariedClassification {}
+impl PaymentClassification for SalariedClassification {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 struct HourlyClassification {
     hourly_rate: f64,
+    timecards: HashMap<NaiveDate, f64>,
 }
-impl PaymentClassification for HourlyClassification {}
+impl PaymentClassification for HourlyClassification {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 struct CommissionedClassification {
     salary: f64,
     commission_rate: f64,
 }
-impl PaymentClassification for CommissionedClassification {}
+impl PaymentClassification for CommissionedClassification {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
-trait PaymentSchedule: Debug {}
+trait PaymentSchedule: DynClone + Debug {}
+dyn_clone::clone_trait_object!(PaymentSchedule);
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct MonthlySchedule;
 impl PaymentSchedule for MonthlySchedule {}
@@ -104,7 +148,8 @@ impl PaymentSchedule for WeeklySchedule {}
 struct BiweeklySchedule;
 impl PaymentSchedule for BiweeklySchedule {}
 
-trait PaymentMethod: Debug {}
+trait PaymentMethod: DynClone + Debug {}
+dyn_clone::clone_trait_object!(PaymentMethod);
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct HoldMethod;
 impl PaymentMethod for HoldMethod {}
@@ -121,7 +166,8 @@ struct DirectMethod {
 impl PaymentMethod for DirectMethod {}
 
 type EmployeeId = u32;
-#[derive(Debug)]
+
+#[derive(Debug, Clone)]
 struct Employee {
     emp_id: EmployeeId,
     name: String,
@@ -160,6 +206,31 @@ impl EmployeeDao<()> for MockDb {
                     emp_id
                 )));
             }
+            Ok(())
+        })
+    }
+    fn fetch(
+        &self,
+        emp_id: EmployeeId,
+    ) -> impl tx_rs::Tx<(), Item = Employee, Err = EmployeeDaoError> {
+        tx_rs::with_tx(move |_| match self.employee.borrow().get(&emp_id) {
+            Some(emp) => Ok(emp.clone()),
+            None => Err(EmployeeDaoError::FetchError(format!(
+                "emp_id={} not found",
+                emp_id
+            ))),
+        })
+    }
+    fn update(&self, emp: Employee) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+        tx_rs::with_tx(move |_| {
+            let emp_id = emp.emp_id;
+            if !self.employee.borrow().contains_key(&emp_id) {
+                return Err(EmployeeDaoError::UpdateError(format!(
+                    "emp_id={} not found",
+                    emp_id
+                )));
+            }
+            self.employee.borrow_mut().insert(emp_id, emp);
             Ok(())
         })
     }
@@ -224,6 +295,7 @@ impl AddEmployeeTransaction<()> for AddHourlyEmployeeTransaction {
     fn get_classification(&self) -> Box<dyn PaymentClassification> {
         Box::new(HourlyClassification {
             hourly_rate: self.hourly_rate,
+            timecards: HashMap::new(),
         })
     }
     fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
@@ -268,6 +340,7 @@ impl AddEmployeeTransaction<()> for AddCommissionedEmployeeTransaction {
 
 struct DelEmployeeTransaction {
     db: MockDb,
+
     emp_id: EmployeeId,
 }
 impl HaveEmployeeDao<()> for DelEmployeeTransaction {
@@ -278,6 +351,42 @@ impl HaveEmployeeDao<()> for DelEmployeeTransaction {
 impl DeleteEmployeeTransaction<()> for DelEmployeeTransaction {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
+    }
+}
+
+struct TimeCardTransaction {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+    date: NaiveDate,
+    hours: f64,
+}
+impl HaveEmployeeDao<()> for TimeCardTransaction {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl TimeCardTransaction {
+    pub fn execute<'a>(&'a self) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeUsecaseError> + 'a {
+        tx_rs::with_tx(move |ctx| {
+            let mut emp = self
+                .dao()
+                .fetch(self.emp_id)
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::NotFound)?;
+            let hourly = emp
+                .classification
+                .as_any_mut()
+                .downcast_mut::<HourlyClassification>()
+                .ok_or(EmployeeUsecaseError::NotHourlySalary)?;
+            hourly.timecards.insert(self.date, self.hours);
+            let _ = self
+                .dao()
+                .update(emp)
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)?;
+            Ok(())
+        })
     }
 }
 
@@ -319,6 +428,14 @@ fn main() {
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
+
+    let req = TimeCardTransaction {
+        db: db.clone(),
+        emp_id: 2,
+        date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
+        hours: 8.0,
+    };
+    let _ = req.execute().run(&mut ()).expect("time card");
 
     for emp_id in 1..=3 {
         let req = DelEmployeeTransaction {
