@@ -100,7 +100,7 @@ impl PaymentClassification for SalariedClassification {
 #[derive(Debug, Clone, PartialEq)]
 struct HourlyClassification {
     hourly_rate: f64,
-    timecards: HashMap<NaiveDate, f64>,
+    timecards: Vec<TimeCard>,
 }
 impl PaymentClassification for HourlyClassification {
     fn as_any(&self) -> &dyn Any {
@@ -114,7 +114,7 @@ impl PaymentClassification for HourlyClassification {
 struct CommissionedClassification {
     salary: f64,
     commission_rate: f64,
-    sales_receipts: Vec<(NaiveDate, f64)>,
+    sales_receipts: Vec<SalesReceipt>,
 }
 impl PaymentClassification for CommissionedClassification {
     fn as_any(&self) -> &dyn Any {
@@ -164,6 +164,28 @@ struct Employee {
     classification: Box<dyn PaymentClassification>,
     schedule: Box<dyn PaymentSchedule>,
     method: Box<dyn PaymentMethod>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct TimeCard {
+    date: NaiveDate,
+    hours: f64,
+}
+impl TimeCard {
+    fn new(date: NaiveDate, hours: f64) -> Self {
+        Self { date, hours }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct SalesReceipt {
+    date: NaiveDate,
+    amount: f64,
+}
+impl SalesReceipt {
+    fn new(date: NaiveDate, amount: f64) -> Self {
+        Self { date, amount }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -284,7 +306,7 @@ impl AddEmployeeTransaction<()> for AddHourlyEmployeeTransaction {
     fn get_classification(&self) -> Box<dyn PaymentClassification> {
         Box::new(HourlyClassification {
             hourly_rate: self.hourly_rate,
-            timecards: HashMap::new(),
+            timecards: vec![],
         })
     }
     fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
@@ -372,7 +394,7 @@ impl TimeCardTransaction {
                 .as_any_mut()
                 .downcast_mut::<HourlyClassification>()
                 .ok_or(EmployeeUsecaseError::NotHourlySalary)?;
-            hourly.timecards.insert(self.date, self.hours);
+            hourly.timecards.push(TimeCard::new(self.date, self.hours));
             self.dao()
                 .update(emp)
                 .run(ctx)
@@ -406,7 +428,9 @@ impl SalesReceiptTransaction {
                 .as_any_mut()
                 .downcast_mut::<CommissionedClassification>()
                 .ok_or(EmployeeUsecaseError::NotCommissionedSalary)?;
-            commissioned.sales_receipts.push((self.date, self.amount));
+            commissioned
+                .sales_receipts
+                .push(SalesReceipt::new(self.date, self.amount));
             self.dao()
                 .update(emp)
                 .run(ctx)
