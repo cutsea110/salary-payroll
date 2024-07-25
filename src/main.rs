@@ -78,20 +78,6 @@ trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     }
 }
 
-trait DeleteEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        let emp_id = self.get_emp_id();
-        self.dao()
-            .delete(emp_id)
-            .map_err(EmployeeUsecaseError::UnregisterEmployeeFailed)
-    }
-}
-
 trait PaymentClassification: DynClone + Debug {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -338,19 +324,22 @@ impl AddEmployeeTransaction<()> for AddCommissionedEmployeeTransaction {
     }
 }
 
-struct DelEmployeeTransaction {
+struct DeleteEmployeeTransaction {
     db: MockDb,
 
     emp_id: EmployeeId,
 }
-impl HaveEmployeeDao<()> for DelEmployeeTransaction {
+impl HaveEmployeeDao<()> for DeleteEmployeeTransaction {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
         Box::new(&self.db)
     }
 }
-impl DeleteEmployeeTransaction<()> for DelEmployeeTransaction {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+impl DeleteEmployeeTransaction {
+    pub fn execute<'a>(&'a self) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeUsecaseError> + 'a {
+        let emp_id = self.emp_id;
+        self.dao()
+            .delete(emp_id)
+            .map_err(EmployeeUsecaseError::UnregisterEmployeeFailed)
     }
 }
 
@@ -436,7 +425,7 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("time card");
 
     for emp_id in 1..=3 {
-        let req = DelEmployeeTransaction {
+        let req = DeleteEmployeeTransaction {
             db: db.clone(),
             emp_id,
         };
