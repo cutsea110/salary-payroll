@@ -181,6 +181,66 @@ trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     }
 }
 
+trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+    fn exec<'a, F>(&'a self, f: F) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        F: FnOnce(&mut Employee) -> Result<(), EmployeeUsecaseError>,
+        Ctx: 'a,
+    {
+        tx_rs::with_tx(move |ctx| {
+            let mut emp = self
+                .dao()
+                .fetch(self.get_emp_id())
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::NotFound)?;
+            f(&mut emp)?;
+            self.dao()
+                .update(emp)
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+        })
+    }
+}
+trait ChangeNameTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_name(&self) -> String;
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.exec(|emp| {
+            emp.name = self.get_name();
+            Ok(())
+        })
+    }
+}
+trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_address(&self) -> String;
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.exec(|emp| {
+            emp.address = self.get_address();
+            Ok(())
+        })
+    }
+}
+trait ChangeClassificationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_classification(&self) -> Box<dyn PaymentClassification>;
+    fn get_schedule(&self) -> Box<dyn PaymentSchedule>;
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.exec(|emp| {
+            emp.classification = self.get_classification();
+            emp.schedule = self.get_schedule();
+            Ok(())
+        })
+    }
+}
+
 trait PaymentClassification: DynClone + Debug {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
