@@ -767,6 +767,76 @@ impl ChangeAddressTransaction<()> for ChangeAddressTransactionImpl {
     }
 }
 
+struct ChangeSalaryTransactionImpl {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+    salary: f64,
+}
+impl HaveEmployeeDao<()> for ChangeSalaryTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl ChangeEmployeeTransaction<()> for ChangeSalaryTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+}
+impl ChangeSalariedTransaction<()> for ChangeSalaryTransactionImpl {
+    fn get_salary(&self) -> f64 {
+        self.salary
+    }
+}
+
+struct ChangeHourlyTransactionImpl {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+    hourly_rate: f64,
+}
+impl HaveEmployeeDao<()> for ChangeHourlyTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl ChangeEmployeeTransaction<()> for ChangeHourlyTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+}
+impl ChangeHourlyTransaction<()> for ChangeHourlyTransactionImpl {
+    fn get_hourly_rate(&self) -> f64 {
+        self.hourly_rate
+    }
+}
+
+struct ChangeCommissionedTransactionImpl {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+    salary: f64,
+    commission_rate: f64,
+}
+impl HaveEmployeeDao<()> for ChangeCommissionedTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl ChangeEmployeeTransaction<()> for ChangeCommissionedTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+}
+impl ChangeCommissionedTransaction<()> for ChangeCommissionedTransactionImpl {
+    fn get_salary(&self) -> f64 {
+        self.salary
+    }
+    fn get_commission_rate(&self) -> f64 {
+        self.commission_rate
+    }
+}
+
 fn main() {
     let db = MockDb {
         employee: Rc::new(RefCell::new(HashMap::new())),
