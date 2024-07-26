@@ -54,10 +54,12 @@ trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
     fn get_name(&self) -> &str;
     fn get_address(&self) -> &str;
-    fn get_classification(&self) -> Box<dyn PaymentClassification>;
-    fn get_schedule(&self) -> Box<dyn PaymentSchedule>;
 
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+    fn exec<'a>(
+        &'a self,
+        classification: Box<dyn PaymentClassification>,
+        schedule: Box<dyn PaymentSchedule>,
+    ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
@@ -65,8 +67,6 @@ trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
         let name = self.get_name().to_string();
         let address = self.get_address().to_string();
 
-        let classification = self.get_classification();
-        let schedule = self.get_schedule();
         let method = Box::new(HoldMethod);
         let affiliation = Box::new(NoAffiliation);
         let emp = Employee {
@@ -81,6 +81,55 @@ trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
         self.dao()
             .insert(emp)
             .map_err(EmployeeUsecaseError::RegisterEmployeeFailed)
+    }
+}
+trait AddSalaryEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+    fn get_salary(&self) -> f64;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        let classification = Box::new(SalariedClassification {
+            salary: self.get_salary(),
+        });
+        let schedule = Box::new(MonthlySchedule);
+
+        self.exec(classification, schedule)
+    }
+}
+trait AddHourlyEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+    fn get_hourly_rate(&self) -> f64;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        let classification = Box::new(HourlyClassification {
+            hourly_rate: self.get_hourly_rate(),
+            timecards: vec![],
+        });
+        let schedule = Box::new(WeeklySchedule);
+
+        self.exec(classification, schedule)
+    }
+}
+trait AddCommissionedEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+    fn get_salary(&self) -> f64;
+    fn get_commission_rate(&self) -> f64;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        let classification = Box::new(CommissionedClassification {
+            salary: self.get_salary(),
+            commission_rate: self.get_commission_rate(),
+            sales_receipts: vec![],
+        });
+        let schedule = Box::new(BiweeklySchedule);
+
+        self.exec(classification, schedule)
     }
 }
 
@@ -475,7 +524,7 @@ impl EmployeeDao<()> for MockDb {
     }
 }
 
-struct AddSalariedEmployeeTransaction {
+struct AddSalariedEmployeeTransactionImpl {
     db: MockDb,
 
     emp_id: EmployeeId,
@@ -483,12 +532,12 @@ struct AddSalariedEmployeeTransaction {
     address: String,
     salary: f64,
 }
-impl HaveEmployeeDao<()> for AddSalariedEmployeeTransaction {
+impl HaveEmployeeDao<()> for AddSalariedEmployeeTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
         Box::new(&self.db)
     }
 }
-impl AddEmployeeTransaction<()> for AddSalariedEmployeeTransaction {
+impl AddEmployeeTransaction<()> for AddSalariedEmployeeTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -498,17 +547,14 @@ impl AddEmployeeTransaction<()> for AddSalariedEmployeeTransaction {
     fn get_address(&self) -> &str {
         &self.address
     }
-    fn get_classification(&self) -> Box<dyn PaymentClassification> {
-        Box::new(SalariedClassification {
-            salary: self.salary,
-        })
-    }
-    fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
-        Box::new(MonthlySchedule)
+}
+impl AddSalaryEmployeeTransaction<()> for AddSalariedEmployeeTransactionImpl {
+    fn get_salary(&self) -> f64 {
+        self.salary
     }
 }
 
-struct AddHourlyEmployeeTransaction {
+struct AddHourlyEmployeeTransactionImpl {
     db: MockDb,
 
     emp_id: EmployeeId,
@@ -516,12 +562,12 @@ struct AddHourlyEmployeeTransaction {
     address: String,
     hourly_rate: f64,
 }
-impl HaveEmployeeDao<()> for AddHourlyEmployeeTransaction {
+impl HaveEmployeeDao<()> for AddHourlyEmployeeTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
         Box::new(&self.db)
     }
 }
-impl AddEmployeeTransaction<()> for AddHourlyEmployeeTransaction {
+impl AddEmployeeTransaction<()> for AddHourlyEmployeeTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -531,18 +577,14 @@ impl AddEmployeeTransaction<()> for AddHourlyEmployeeTransaction {
     fn get_address(&self) -> &str {
         &self.address
     }
-    fn get_classification(&self) -> Box<dyn PaymentClassification> {
-        Box::new(HourlyClassification {
-            hourly_rate: self.hourly_rate,
-            timecards: vec![],
-        })
-    }
-    fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
-        Box::new(WeeklySchedule)
+}
+impl AddHourlyEmployeeTransaction<()> for AddHourlyEmployeeTransactionImpl {
+    fn get_hourly_rate(&self) -> f64 {
+        self.hourly_rate
     }
 }
 
-struct AddCommissionedEmployeeTransaction {
+struct AddCommissionedEmployeeTransactionImpl {
     db: MockDb,
 
     emp_id: EmployeeId,
@@ -551,12 +593,12 @@ struct AddCommissionedEmployeeTransaction {
     salary: f64,
     commission_rate: f64,
 }
-impl HaveEmployeeDao<()> for AddCommissionedEmployeeTransaction {
+impl HaveEmployeeDao<()> for AddCommissionedEmployeeTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
         Box::new(&self.db)
     }
 }
-impl AddEmployeeTransaction<()> for AddCommissionedEmployeeTransaction {
+impl AddEmployeeTransaction<()> for AddCommissionedEmployeeTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -566,15 +608,13 @@ impl AddEmployeeTransaction<()> for AddCommissionedEmployeeTransaction {
     fn get_address(&self) -> &str {
         &self.address
     }
-    fn get_classification(&self) -> Box<dyn PaymentClassification> {
-        Box::new(CommissionedClassification {
-            salary: self.salary,
-            commission_rate: self.commission_rate,
-            sales_receipts: vec![],
-        })
+}
+impl AddCommissionedEmployeeTransaction<()> for AddCommissionedEmployeeTransactionImpl {
+    fn get_salary(&self) -> f64 {
+        self.salary
     }
-    fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
-        Box::new(BiweeklySchedule)
+    fn get_commission_rate(&self) -> f64 {
+        self.commission_rate
     }
 }
 
@@ -647,7 +687,7 @@ fn main() {
         employee: Rc::new(RefCell::new(HashMap::new())),
     };
 
-    let req = AddSalariedEmployeeTransaction {
+    let req = AddSalariedEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 1,
         name: "Bob".to_string(),
@@ -658,7 +698,7 @@ fn main() {
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = AddHourlyEmployeeTransaction {
+    let req = AddHourlyEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         name: "Bill".to_string(),
@@ -677,7 +717,7 @@ fn main() {
     };
     let _ = req.execute().run(&mut ()).expect("time card");
 
-    let req = AddCommissionedEmployeeTransaction {
+    let req = AddCommissionedEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 3,
         name: "Lance".to_string(),
