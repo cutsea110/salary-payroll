@@ -232,6 +232,7 @@ trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
 
 trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
+
     fn exec<'a, F>(&'a self, f: F) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         F: FnOnce(&mut Employee) -> Result<(), EmployeeUsecaseError>,
@@ -252,39 +253,79 @@ trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     }
 }
 trait ChangeNameTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
-    fn get_name(&self) -> String;
+    fn get_name(&self) -> &str;
+
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
         self.exec(|emp| {
-            emp.name = self.get_name();
+            emp.name = self.get_name().to_string();
             Ok(())
         })
     }
 }
 trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
-    fn get_address(&self) -> String;
+    fn get_address(&self) -> &str;
+
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
         self.exec(|emp| {
-            emp.address = self.get_address();
+            emp.address = self.get_address().to_string();
             Ok(())
         })
     }
 }
-trait ChangeClassificationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
-    fn get_classification(&self) -> Box<dyn PaymentClassification>;
-    fn get_schedule(&self) -> Box<dyn PaymentSchedule>;
+trait ChangeSalariedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_salary(&self) -> f64;
+
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
         self.exec(|emp| {
-            emp.classification = self.get_classification();
-            emp.schedule = self.get_schedule();
+            emp.classification = Box::new(SalariedClassification {
+                salary: self.get_salary(),
+            });
+            emp.schedule = Box::new(MonthlySchedule);
+            Ok(())
+        })
+    }
+}
+trait ChangeHourlyTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_hourly_rate(&self) -> f64;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.exec(|emp| {
+            emp.classification = Box::new(HourlyClassification {
+                hourly_rate: self.get_hourly_rate(),
+                timecards: vec![],
+            });
+            emp.schedule = Box::new(WeeklySchedule);
+            Ok(())
+        })
+    }
+}
+trait ChangeCommissionedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_salary(&self) -> f64;
+    fn get_commission_rate(&self) -> f64;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.exec(|emp| {
+            emp.classification = Box::new(CommissionedClassification {
+                salary: self.get_salary(),
+                commission_rate: self.get_commission_rate(),
+                sales_receipts: vec![],
+            });
+            emp.schedule = Box::new(BiweeklySchedule);
             Ok(())
         })
     }
@@ -682,6 +723,50 @@ impl SalesReceiptTransaction<()> for SalesReceiptTransactionImpl {
     }
 }
 
+struct ChangeNameTransactionImpl {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+    name: String,
+}
+impl HaveEmployeeDao<()> for ChangeNameTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl ChangeEmployeeTransaction<()> for ChangeNameTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+}
+impl ChangeNameTransaction<()> for ChangeNameTransactionImpl {
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+}
+
+struct ChangeAddressTransactionImpl {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+    address: String,
+}
+impl HaveEmployeeDao<()> for ChangeAddressTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl ChangeEmployeeTransaction<()> for ChangeAddressTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+}
+impl ChangeAddressTransaction<()> for ChangeAddressTransactionImpl {
+    fn get_address(&self) -> &str {
+        &self.address
+    }
+}
+
 fn main() {
     let db = MockDb {
         employee: Rc::new(RefCell::new(HashMap::new())),
@@ -697,6 +782,22 @@ fn main() {
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
+
+    let req = ChangeNameTransactionImpl {
+        db: db.clone(),
+        emp_id: 1,
+        name: "Robert".to_string(),
+    };
+    let _ = req.execute().run(&mut ()).expect("change name");
+    println!("name changed: {:#?}", db);
+
+    let req = ChangeAddressTransactionImpl {
+        db: db.clone(),
+        emp_id: 1,
+        address: "Office".to_string(),
+    };
+    let _ = req.execute().run(&mut ()).expect("change address");
+    println!("address changed: {:#?}", db);
 
     let req = AddHourlyEmployeeTransactionImpl {
         db: db.clone(),
