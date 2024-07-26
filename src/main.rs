@@ -40,12 +40,12 @@ enum EmployeeUsecaseError {
     UnregisterEmployeeFailed(EmployeeDaoError),
     #[error("employee not found: {0}")]
     NotFound(EmployeeDaoError),
-    #[error("employee is not hourly salary")]
-    NotHourlySalary,
-    #[error("employee is not commissioned salary")]
-    NotCommissionedSalary,
-    #[error("employee is not union member")]
-    NotUnionMember,
+    #[error("employee is not hourly salary: {0}")]
+    NotHourlySalary(String),
+    #[error("employee is not commissioned salary: {0}")]
+    NotCommissionedSalary(String),
+    #[error("employee is not union member: {0}")]
+    NotUnionMember(String),
     #[error("update employee failed: {0}")]
     UpdateEmployeeFailed(EmployeeDaoError),
 }
@@ -179,7 +179,10 @@ trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                 .classification
                 .as_any_mut()
                 .downcast_mut::<HourlyClassification>()
-                .ok_or(EmployeeUsecaseError::NotHourlySalary)?;
+                .ok_or(EmployeeUsecaseError::NotHourlySalary(format!(
+                    "emp_id: {}",
+                    self.get_emp_id()
+                )))?;
             hourly
                 .timecards
                 .push(TimeCard::new(self.get_date(), self.get_hours()));
@@ -207,7 +210,10 @@ trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                 .classification
                 .as_any_mut()
                 .downcast_mut::<CommissionedClassification>()
-                .ok_or(EmployeeUsecaseError::NotCommissionedSalary)?;
+                .ok_or(EmployeeUsecaseError::NotCommissionedSalary(format!(
+                    "emp_id: {}",
+                    self.get_emp_id()
+                )))?;
             commissioned
                 .sales_receipts
                 .push(SalesReceipt::new(self.get_date(), self.get_amount()));
@@ -235,7 +241,10 @@ trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                 .affiliation
                 .as_any_mut()
                 .downcast_mut::<UnionAffiliation>()
-                .ok_or(EmployeeUsecaseError::NotUnionMember)?;
+                .ok_or(EmployeeUsecaseError::NotUnionMember(format!(
+                    "emp_id: {0}",
+                    self.get_emp_id()
+                )))?;
             affiliation
                 .service_charges
                 .push(ServiceCharge::new(self.get_date(), self.get_amount()));
