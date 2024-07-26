@@ -51,22 +51,19 @@ enum EmployeeUsecaseError {
 }
 
 trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_name(&self) -> &str;
-    fn get_address(&self) -> &str;
-
     fn exec<'a>(
         &'a self,
+        emp_id: EmployeeId,
+        name: &str,
+        address: &str,
         classification: Box<dyn PaymentClassification>,
         schedule: Box<dyn PaymentSchedule>,
     ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
-        let emp_id = self.get_emp_id();
-        let name = self.get_name().to_string();
-        let address = self.get_address().to_string();
-
+        let name = name.to_string();
+        let address = address.to_string();
         let method = Box::new(HoldMethod);
         let affiliation = Box::new(NoAffiliation);
         let emp = Employee {
@@ -83,38 +80,55 @@ trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
             .map_err(EmployeeUsecaseError::RegisterEmployeeFailed)
     }
 }
+// blanket implementation
+impl<T, Ctx> AddEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> {}
 trait AddSalaryEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+    fn get_name(&self) -> &str;
+    fn get_address(&self) -> &str;
     fn get_salary(&self) -> f64;
 
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
+        let emp_id = self.get_emp_id();
+        let name = self.get_name();
+        let address = self.get_address();
         let classification = Box::new(SalariedClassification {
             salary: self.get_salary(),
         });
         let schedule = Box::new(MonthlySchedule);
 
-        self.exec(classification, schedule)
+        self.exec(emp_id, name, address, classification, schedule)
     }
 }
 trait AddHourlyEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+    fn get_name(&self) -> &str;
+    fn get_address(&self) -> &str;
     fn get_hourly_rate(&self) -> f64;
 
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
+        let emp_id = self.get_emp_id();
+        let name = self.get_name();
+        let address = self.get_address();
         let classification = Box::new(HourlyClassification {
             hourly_rate: self.get_hourly_rate(),
             timecards: vec![],
         });
         let schedule = Box::new(WeeklySchedule);
 
-        self.exec(classification, schedule)
+        self.exec(emp_id, name, address, classification, schedule)
     }
 }
 trait AddCommissionedEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+    fn get_name(&self) -> &str;
+    fn get_address(&self) -> &str;
     fn get_salary(&self) -> f64;
     fn get_commission_rate(&self) -> f64;
 
@@ -122,6 +136,9 @@ trait AddCommissionedEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
+        let emp_id = self.get_emp_id();
+        let name = self.get_name();
+        let address = self.get_address();
         let classification = Box::new(CommissionedClassification {
             salary: self.get_salary(),
             commission_rate: self.get_commission_rate(),
@@ -129,7 +146,7 @@ trait AddCommissionedEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
         });
         let schedule = Box::new(BiweeklySchedule);
 
-        self.exec(classification, schedule)
+        self.exec(emp_id, name, address, classification, schedule)
     }
 }
 
@@ -231,9 +248,11 @@ trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
 }
 
 trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-
-    fn exec<'a, F>(&'a self, f: F) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn exec<'a, F>(
+        &'a self,
+        emp_id: EmployeeId,
+        f: F,
+    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         F: FnOnce(&mut Employee) -> Result<(), EmployeeUsecaseError>,
         Ctx: 'a,
@@ -241,7 +260,7 @@ trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
         tx_rs::with_tx(move |ctx| {
             let mut emp = self
                 .dao()
-                .fetch(self.get_emp_id())
+                .fetch(emp_id)
                 .run(ctx)
                 .map_err(EmployeeUsecaseError::NotFound)?;
             f(&mut emp)?;
@@ -252,40 +271,45 @@ trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
         })
     }
 }
+// blanket implementation
+impl<Ctx, T> ChangeEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> {}
 trait ChangeNameTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
     fn get_name(&self) -> &str;
 
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
-        self.exec(|emp| {
+        self.exec(self.get_emp_id(), |emp| {
             emp.name = self.get_name().to_string();
             Ok(())
         })
     }
 }
 trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
     fn get_address(&self) -> &str;
 
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
-        self.exec(|emp| {
+        self.exec(self.get_emp_id(), |emp| {
             emp.address = self.get_address().to_string();
             Ok(())
         })
     }
 }
 trait ChangeSalariedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
     fn get_salary(&self) -> f64;
 
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
-        self.exec(|emp| {
+        self.exec(self.get_emp_id(), |emp| {
             emp.classification = Box::new(SalariedClassification {
                 salary: self.get_salary(),
             });
@@ -295,13 +319,14 @@ trait ChangeSalariedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     }
 }
 trait ChangeHourlyTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
     fn get_hourly_rate(&self) -> f64;
 
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
-        self.exec(|emp| {
+        self.exec(self.get_emp_id(), |emp| {
             emp.classification = Box::new(HourlyClassification {
                 hourly_rate: self.get_hourly_rate(),
                 timecards: vec![],
@@ -312,6 +337,7 @@ trait ChangeHourlyTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     }
 }
 trait ChangeCommissionedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
     fn get_salary(&self) -> f64;
     fn get_commission_rate(&self) -> f64;
 
@@ -319,7 +345,7 @@ trait ChangeCommissionedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(|emp| {
+        self.exec(self.get_emp_id(), |emp| {
             emp.classification = Box::new(CommissionedClassification {
                 salary: self.get_salary(),
                 commission_rate: self.get_commission_rate(),
@@ -578,7 +604,7 @@ impl HaveEmployeeDao<()> for AddSalariedEmployeeTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl AddEmployeeTransaction<()> for AddSalariedEmployeeTransactionImpl {
+impl AddSalaryEmployeeTransaction<()> for AddSalariedEmployeeTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -588,8 +614,6 @@ impl AddEmployeeTransaction<()> for AddSalariedEmployeeTransactionImpl {
     fn get_address(&self) -> &str {
         &self.address
     }
-}
-impl AddSalaryEmployeeTransaction<()> for AddSalariedEmployeeTransactionImpl {
     fn get_salary(&self) -> f64 {
         self.salary
     }
@@ -608,7 +632,7 @@ impl HaveEmployeeDao<()> for AddHourlyEmployeeTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl AddEmployeeTransaction<()> for AddHourlyEmployeeTransactionImpl {
+impl AddHourlyEmployeeTransaction<()> for AddHourlyEmployeeTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -618,8 +642,6 @@ impl AddEmployeeTransaction<()> for AddHourlyEmployeeTransactionImpl {
     fn get_address(&self) -> &str {
         &self.address
     }
-}
-impl AddHourlyEmployeeTransaction<()> for AddHourlyEmployeeTransactionImpl {
     fn get_hourly_rate(&self) -> f64 {
         self.hourly_rate
     }
@@ -639,7 +661,7 @@ impl HaveEmployeeDao<()> for AddCommissionedEmployeeTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl AddEmployeeTransaction<()> for AddCommissionedEmployeeTransactionImpl {
+impl AddCommissionedEmployeeTransaction<()> for AddCommissionedEmployeeTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -649,8 +671,6 @@ impl AddEmployeeTransaction<()> for AddCommissionedEmployeeTransactionImpl {
     fn get_address(&self) -> &str {
         &self.address
     }
-}
-impl AddCommissionedEmployeeTransaction<()> for AddCommissionedEmployeeTransactionImpl {
     fn get_salary(&self) -> f64 {
         self.salary
     }
@@ -734,12 +754,10 @@ impl HaveEmployeeDao<()> for ChangeNameTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeEmployeeTransaction<()> for ChangeNameTransactionImpl {
+impl ChangeNameTransaction<()> for ChangeNameTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
-}
-impl ChangeNameTransaction<()> for ChangeNameTransactionImpl {
     fn get_name(&self) -> &str {
         &self.name
     }
@@ -756,12 +774,10 @@ impl HaveEmployeeDao<()> for ChangeAddressTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeEmployeeTransaction<()> for ChangeAddressTransactionImpl {
+impl ChangeAddressTransaction<()> for ChangeAddressTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
-}
-impl ChangeAddressTransaction<()> for ChangeAddressTransactionImpl {
     fn get_address(&self) -> &str {
         &self.address
     }
@@ -778,12 +794,10 @@ impl HaveEmployeeDao<()> for ChangeSalaryTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeEmployeeTransaction<()> for ChangeSalaryTransactionImpl {
+impl ChangeSalariedTransaction<()> for ChangeSalaryTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
-}
-impl ChangeSalariedTransaction<()> for ChangeSalaryTransactionImpl {
     fn get_salary(&self) -> f64 {
         self.salary
     }
@@ -800,12 +814,10 @@ impl HaveEmployeeDao<()> for ChangeHourlyTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeEmployeeTransaction<()> for ChangeHourlyTransactionImpl {
+impl ChangeHourlyTransaction<()> for ChangeHourlyTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
-}
-impl ChangeHourlyTransaction<()> for ChangeHourlyTransactionImpl {
     fn get_hourly_rate(&self) -> f64 {
         self.hourly_rate
     }
@@ -823,12 +835,10 @@ impl HaveEmployeeDao<()> for ChangeCommissionedTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeEmployeeTransaction<()> for ChangeCommissionedTransactionImpl {
+impl ChangeCommissionedTransaction<()> for ChangeCommissionedTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
-}
-impl ChangeCommissionedTransaction<()> for ChangeCommissionedTransactionImpl {
     fn get_salary(&self) -> f64 {
         self.salary
     }
