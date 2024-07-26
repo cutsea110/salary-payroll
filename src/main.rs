@@ -535,6 +535,7 @@ impl Affiliation for NoAffiliation {
 }
 
 type EmployeeId = u32;
+type MemberId = u32;
 
 #[derive(Debug, Clone)]
 struct Employee {
@@ -622,6 +623,7 @@ impl ServiceCharge {
 #[derive(Debug, Clone)]
 struct MockDb {
     employees: Rc<RefCell<HashMap<EmployeeId, Employee>>>,
+    union_members: Rc<RefCell<HashMap<MemberId, EmployeeId>>>,
 }
 impl EmployeeDao<()> for MockDb {
     fn insert(
@@ -997,6 +999,7 @@ impl ChangeHoldTransaction<()> for ChangeHoldTransactionImpl {
 fn main() {
     let db = MockDb {
         employees: Rc::new(RefCell::new(HashMap::new())),
+        union_members: Rc::new(RefCell::new(HashMap::new())),
     };
 
     let req = AddSalariedEmployeeTransactionImpl {
