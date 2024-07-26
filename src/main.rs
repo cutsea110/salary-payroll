@@ -44,6 +44,8 @@ enum EmployeeUsecaseError {
     NotHourlySalary,
     #[error("employee is not commissioned salary")]
     NotCommissionedSalary,
+    #[error("employee is not union member")]
+    NotUnionMember,
     #[error("update employee failed: {0}")]
     UpdateEmployeeFailed(EmployeeDaoError),
 }
@@ -151,6 +153,34 @@ trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     }
 }
 
+trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+    fn get_date(&self) -> NaiveDate;
+    fn get_amount(&self) -> f64;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
+        tx_rs::with_tx(move |ctx| {
+            let mut emp = self
+                .dao()
+                .fetch(self.get_emp_id())
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::NotFound)?;
+            let affiliation = emp
+                .affiliation
+                .as_any_mut()
+                .downcast_mut::<UnionAffiliation>()
+                .ok_or(EmployeeUsecaseError::NotUnionMember)?;
+            affiliation
+                .service_charges
+                .push(ServiceCharge::new(self.get_date(), self.get_amount()));
+            self.dao()
+                .update(emp)
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+        })
+    }
+}
+
 trait PaymentClassification: DynClone + Debug {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -249,17 +279,36 @@ struct DirectMethod {
 }
 impl PaymentMethod for DirectMethod {}
 
-trait Affiliation: DynClone + Debug {}
+trait Affiliation: DynClone + Debug {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
 dyn_clone::clone_trait_object!(Affiliation);
 #[derive(Debug, Clone, PartialEq)]
 struct UnionAffiliation {
     member_id: u32,
     dues: f64,
+
+    service_charges: Vec<ServiceCharge>,
 }
-impl Affiliation for UnionAffiliation {}
+impl Affiliation for UnionAffiliation {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 struct NoAffiliation;
-impl Affiliation for NoAffiliation {}
+impl Affiliation for NoAffiliation {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 type EmployeeId = u32;
 
