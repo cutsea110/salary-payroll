@@ -621,7 +621,7 @@ impl ServiceCharge {
 
 #[derive(Debug, Clone)]
 struct MockDb {
-    employee: Rc<RefCell<HashMap<EmployeeId, Employee>>>,
+    employees: Rc<RefCell<HashMap<EmployeeId, Employee>>>,
 }
 impl EmployeeDao<()> for MockDb {
     fn insert(
@@ -630,19 +630,19 @@ impl EmployeeDao<()> for MockDb {
     ) -> impl tx_rs::Tx<(), Item = EmployeeId, Err = EmployeeDaoError> {
         tx_rs::with_tx(move |_| {
             let emp_id = emp.emp_id;
-            if self.employee.borrow().contains_key(&emp_id) {
+            if self.employees.borrow().contains_key(&emp_id) {
                 return Err(EmployeeDaoError::InsertError(format!(
                     "emp_id={} already exists",
                     emp_id
                 )));
             }
-            self.employee.borrow_mut().insert(emp_id, emp);
+            self.employees.borrow_mut().insert(emp_id, emp);
             Ok(emp_id)
         })
     }
     fn delete(&self, emp_id: EmployeeId) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
         tx_rs::with_tx(move |_| {
-            if self.employee.borrow_mut().remove(&emp_id).is_none() {
+            if self.employees.borrow_mut().remove(&emp_id).is_none() {
                 return Err(EmployeeDaoError::DeleteError(format!(
                     "emp_id={} not found",
                     emp_id
@@ -655,7 +655,7 @@ impl EmployeeDao<()> for MockDb {
         &self,
         emp_id: EmployeeId,
     ) -> impl tx_rs::Tx<(), Item = Employee, Err = EmployeeDaoError> {
-        tx_rs::with_tx(move |_| match self.employee.borrow().get(&emp_id) {
+        tx_rs::with_tx(move |_| match self.employees.borrow().get(&emp_id) {
             Some(emp) => Ok(emp.clone()),
             None => Err(EmployeeDaoError::FetchError(format!(
                 "emp_id={} not found",
@@ -666,13 +666,13 @@ impl EmployeeDao<()> for MockDb {
     fn update(&self, emp: Employee) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
         tx_rs::with_tx(move |_| {
             let emp_id = emp.emp_id;
-            if !self.employee.borrow().contains_key(&emp_id) {
+            if !self.employees.borrow().contains_key(&emp_id) {
                 return Err(EmployeeDaoError::UpdateError(format!(
                     "emp_id={} not found",
                     emp_id
                 )));
             }
-            self.employee.borrow_mut().insert(emp_id, emp);
+            self.employees.borrow_mut().insert(emp_id, emp);
             Ok(())
         })
     }
@@ -996,7 +996,7 @@ impl ChangeHoldTransaction<()> for ChangeHoldTransactionImpl {
 
 fn main() {
     let db = MockDb {
-        employee: Rc::new(RefCell::new(HashMap::new())),
+        employees: Rc::new(RefCell::new(HashMap::new())),
     };
 
     let req = AddSalariedEmployeeTransactionImpl {
