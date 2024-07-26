@@ -908,7 +908,43 @@ fn main() {
     };
     let _ = req.execute().run(&mut ()).expect("sales receipt");
 
-    for emp_id in 1..=3 {
+    let req = AddSalariedEmployeeTransactionImpl {
+        db: db.clone(),
+        emp_id: 4,
+        name: "Anna".to_string(),
+        address: "Home".to_string(),
+        salary: 1500.00,
+    };
+    let emp_id = req.execute().run(&mut ()).expect("add employee");
+    println!("emp_id: {:?}", emp_id);
+    println!("registered: {:#?}", db);
+
+    let req = ChangeHourlyTransactionImpl {
+        db: db.clone(),
+        emp_id: 4,
+        hourly_rate: 20.00,
+    };
+    let _ = req.execute().run(&mut ()).expect("change hourly");
+    println!("change hourly: {:#?}", db);
+
+    let req = ChangeCommissionedTransactionImpl {
+        db: db.clone(),
+        emp_id: 4,
+        salary: 2000.00,
+        commission_rate: 2.5,
+    };
+    let _ = req.execute().run(&mut ()).expect("change commissioned");
+    println!("change commissioned: {:#?}", db);
+
+    let req = ChangeSalaryTransactionImpl {
+        db: db.clone(),
+        emp_id: 4,
+        salary: 3000.00,
+    };
+    let _ = req.execute().run(&mut ()).expect("change salary");
+    println!("change salary: {:#?}", db);
+
+    for emp_id in 1..=4 {
         let req = DeleteEmployeeTransactionImpl {
             db: db.clone(),
             emp_id,
