@@ -27,6 +27,15 @@ trait EmployeeDao<Ctx> {
         emp_id: EmployeeId,
     ) -> impl tx_rs::Tx<Ctx, Item = Employee, Err = EmployeeDaoError>;
     fn update(&self, emp: Employee) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
+    fn add_union_member(
+        &self,
+        member_id: MemberId,
+        emp_id: EmployeeId,
+    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
+    fn remove_union_member(
+        &self,
+        member_id: MemberId,
+    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
 }
 trait HaveEmployeeDao<Ctx> {
     fn dao(&self) -> Box<&impl EmployeeDao<Ctx>>;
@@ -44,10 +53,14 @@ enum EmployeeUsecaseError {
     NotHourlySalary(String),
     #[error("employee is not commissioned salary: {0}")]
     NotCommissionedSalary(String),
-    #[error("employee is not union member: {0}")]
-    NotUnionMember(String),
     #[error("update employee failed: {0}")]
     UpdateEmployeeFailed(EmployeeDaoError),
+    #[error("employee is not union member: {0}")]
+    NotUnionMember(String),
+    #[error("add union member failed: {0}")]
+    AddUnionMemberFailed(EmployeeDaoError),
+    #[error("remove union member failed: {0}")]
+    RemoveUnionMemberFailed(EmployeeDaoError),
 }
 
 trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
@@ -263,7 +276,7 @@ trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
         f: F,
     ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
-        F: FnOnce(&mut Employee) -> Result<(), EmployeeUsecaseError>,
+        F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError>,
         Ctx: 'a,
     {
         tx_rs::with_tx(move |ctx| {
@@ -272,7 +285,7 @@ trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                 .fetch(emp_id)
                 .run(ctx)
                 .map_err(EmployeeUsecaseError::NotFound)?;
-            f(&mut emp)?;
+            f(ctx, &mut emp)?;
             self.dao()
                 .update(emp)
                 .run(ctx)
@@ -290,7 +303,7 @@ trait ChangeNameTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |emp| {
+        self.exec(self.get_emp_id(), |_, emp| {
             emp.set_name(self.get_name());
             Ok(())
         })
@@ -304,7 +317,7 @@ trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |emp| {
+        self.exec(self.get_emp_id(), |_, emp| {
             emp.set_address(self.get_address());
             Ok(())
         })
@@ -318,7 +331,7 @@ trait ChangeSalariedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |emp| {
+        self.exec(self.get_emp_id(), |_, emp| {
             emp.set_classification(Box::new(SalariedClassification {
                 salary: self.get_salary(),
             }));
@@ -335,7 +348,7 @@ trait ChangeHourlyTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |emp| {
+        self.exec(self.get_emp_id(), |_, emp| {
             emp.set_classification(Box::new(HourlyClassification {
                 hourly_rate: self.get_hourly_rate(),
                 timecards: vec![],
@@ -354,7 +367,7 @@ trait ChangeCommissionedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |emp| {
+        self.exec(self.get_emp_id(), |_, emp| {
             emp.set_classification(Box::new(CommissionedClassification {
                 salary: self.get_salary(),
                 commission_rate: self.get_commission_rate(),
@@ -375,7 +388,7 @@ trait ChangeDirectTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |emp| {
+        self.exec(self.get_emp_id(), |_, emp| {
             emp.set_method(Box::new(DirectMethod {
                 bank: self.get_bank().to_string(),
                 account: self.get_account().to_string(),
@@ -392,7 +405,7 @@ trait ChangeMailTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |emp| {
+        self.exec(self.get_emp_id(), |_, emp| {
             emp.set_method(Box::new(MailMethod {
                 address: self.get_address().to_string(),
             }));
@@ -407,8 +420,59 @@ trait ChangeHoldTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |emp| {
+        self.exec(self.get_emp_id(), |_, emp| {
             emp.set_method(Box::new(HoldMethod));
+            Ok(())
+        })
+    }
+}
+
+trait ChangeUnionMemberTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+    fn get_member_id(&self) -> MemberId;
+    fn get_dues(&self) -> f64;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        tx_rs::with_tx(move |ctx| {
+            self.dao()
+                .add_union_member(self.get_member_id(), self.get_emp_id())
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::AddUnionMemberFailed)?;
+            self.exec(self.get_emp_id(), |_, emp| {
+                emp.set_affiliation(Box::new(UnionAffiliation {
+                    member_id: self.get_member_id(),
+                    dues: self.get_dues(),
+                    service_charges: vec![],
+                }));
+                Ok(())
+            })
+            .run(ctx)
+        })
+    }
+}
+trait ChangeUnaffiliatedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.exec(self.get_emp_id(), |ctx, emp| {
+            let member_id = emp
+                .get_affiliation()
+                .as_any()
+                .downcast_ref::<UnionAffiliation>()
+                .map(|a| a.member_id);
+            if let Some(member_id) = member_id {
+                self.dao()
+                    .remove_union_member(member_id)
+                    .run(ctx)
+                    .map_err(EmployeeUsecaseError::RemoveUnionMemberFailed)?;
+            }
+            emp.set_affiliation(Box::new(NoAffiliation));
             Ok(())
         })
     }
@@ -591,6 +655,9 @@ impl Employee {
     pub fn set_method(&mut self, method: Box<dyn PaymentMethod>) {
         self.method = method;
     }
+    pub fn get_affiliation(&self) -> Box<dyn Affiliation> {
+        self.affiliation.clone()
+    }
     pub fn set_affiliation(&mut self, affiliation: Box<dyn Affiliation>) {
         self.affiliation = affiliation;
     }
@@ -684,6 +751,43 @@ impl EmployeeDao<()> for MockDb {
                 )));
             }
             self.employees.borrow_mut().insert(emp_id, emp);
+            Ok(())
+        })
+    }
+
+    fn add_union_member(
+        &self,
+        member_id: MemberId,
+        emp_id: EmployeeId,
+    ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+        tx_rs::with_tx(move |_| {
+            if self.union_members.borrow().contains_key(&member_id) {
+                return Err(EmployeeDaoError::InsertError(format!(
+                    "member_id={} already exists",
+                    member_id
+                )));
+            }
+            if self.union_members.borrow().values().any(|&v| v == emp_id) {
+                return Err(EmployeeDaoError::InsertError(format!(
+                    "emp_id={} already exists",
+                    emp_id
+                )));
+            }
+            self.union_members.borrow_mut().insert(member_id, emp_id);
+            Ok(())
+        })
+    }
+    fn remove_union_member(
+        &self,
+        member_id: MemberId,
+    ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+        tx_rs::with_tx(move |_| {
+            if self.union_members.borrow_mut().remove(&member_id).is_none() {
+                return Err(EmployeeDaoError::DeleteError(format!(
+                    "member_id={} not found",
+                    member_id
+                )));
+            }
             Ok(())
         })
     }
@@ -1005,6 +1109,46 @@ impl ChangeHoldTransaction<()> for ChangeHoldTransactionImpl {
     }
 }
 
+struct ChangeUnionMemberTransactionImpl {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+    member_id: EmployeeId,
+    dues: f64,
+}
+impl HaveEmployeeDao<()> for ChangeUnionMemberTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl ChangeUnionMemberTransaction<()> for ChangeUnionMemberTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+    fn get_member_id(&self) -> EmployeeId {
+        self.member_id
+    }
+    fn get_dues(&self) -> f64 {
+        self.dues
+    }
+}
+
+struct ChangeNoMemberTransactionImpl {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+}
+impl HaveEmployeeDao<()> for ChangeNoMemberTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl ChangeUnaffiliatedTransaction<()> for ChangeNoMemberTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+}
+
 fn main() {
     let db = MockDb {
         employees: Rc::new(RefCell::new(HashMap::new())),
@@ -1136,6 +1280,22 @@ fn main() {
     };
     let _ = req.execute().run(&mut ()).expect("change hold");
     println!("change hold: {:#?}", db);
+
+    let req = ChangeUnionMemberTransactionImpl {
+        db: db.clone(),
+        emp_id: 4,
+        member_id: 7734,
+        dues: 99.42,
+    };
+    let _ = req.execute().run(&mut ()).expect("change union member");
+    println!("change union member: {:#?}", db);
+
+    let req = ChangeNoMemberTransactionImpl {
+        db: db.clone(),
+        emp_id: 4,
+    };
+    let _ = req.execute().run(&mut ()).expect("change no member");
+    println!("remove union member: {:#?}", db);
 
     for emp_id in 1..=4 {
         let req = DeleteEmployeeTransactionImpl {
