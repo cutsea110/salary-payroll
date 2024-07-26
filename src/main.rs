@@ -282,7 +282,7 @@ trait ChangeNameTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         Ctx: 'a,
     {
         self.exec(self.get_emp_id(), |emp| {
-            emp.name = self.get_name().to_string();
+            emp.set_name(self.get_name());
             Ok(())
         })
     }
@@ -296,7 +296,7 @@ trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         Ctx: 'a,
     {
         self.exec(self.get_emp_id(), |emp| {
-            emp.address = self.get_address().to_string();
+            emp.set_address(self.get_address());
             Ok(())
         })
     }
@@ -310,10 +310,10 @@ trait ChangeSalariedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         Ctx: 'a,
     {
         self.exec(self.get_emp_id(), |emp| {
-            emp.classification = Box::new(SalariedClassification {
+            emp.set_classification(Box::new(SalariedClassification {
                 salary: self.get_salary(),
-            });
-            emp.schedule = Box::new(MonthlySchedule);
+            }));
+            emp.set_schedule(Box::new(MonthlySchedule));
             Ok(())
         })
     }
@@ -327,11 +327,11 @@ trait ChangeHourlyTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         Ctx: 'a,
     {
         self.exec(self.get_emp_id(), |emp| {
-            emp.classification = Box::new(HourlyClassification {
+            emp.set_classification(Box::new(HourlyClassification {
                 hourly_rate: self.get_hourly_rate(),
                 timecards: vec![],
-            });
-            emp.schedule = Box::new(WeeklySchedule);
+            }));
+            emp.set_schedule(Box::new(WeeklySchedule));
             Ok(())
         })
     }
@@ -346,12 +346,12 @@ trait ChangeCommissionedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         Ctx: 'a,
     {
         self.exec(self.get_emp_id(), |emp| {
-            emp.classification = Box::new(CommissionedClassification {
+            emp.set_classification(Box::new(CommissionedClassification {
                 salary: self.get_salary(),
                 commission_rate: self.get_commission_rate(),
                 sales_receipts: vec![],
-            });
-            emp.schedule = Box::new(BiweeklySchedule);
+            }));
+            emp.set_schedule(Box::new(BiweeklySchedule));
             Ok(())
         })
     }
@@ -367,10 +367,10 @@ trait ChangeDirectTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         Ctx: 'a,
     {
         self.exec(self.get_emp_id(), |emp| {
-            emp.method = Box::new(DirectMethod {
+            emp.set_method(Box::new(DirectMethod {
                 bank: self.get_bank().to_string(),
                 account: self.get_account().to_string(),
-            });
+            }));
             Ok(())
         })
     }
@@ -384,9 +384,9 @@ trait ChangeMailTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         Ctx: 'a,
     {
         self.exec(self.get_emp_id(), |emp| {
-            emp.method = Box::new(MailMethod {
+            emp.set_method(Box::new(MailMethod {
                 address: self.get_address().to_string(),
-            });
+            }));
             Ok(())
         })
     }
@@ -399,7 +399,7 @@ trait ChangeHoldTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         Ctx: 'a,
     {
         self.exec(self.get_emp_id(), |emp| {
-            emp.method = Box::new(HoldMethod);
+            emp.set_method(Box::new(HoldMethod));
             Ok(())
         })
     }
@@ -545,6 +545,45 @@ struct Employee {
     schedule: Box<dyn PaymentSchedule>,
     method: Box<dyn PaymentMethod>,
     affiliation: Box<dyn Affiliation>,
+}
+impl Employee {
+    pub fn new(
+        emp_id: EmployeeId,
+        name: &str,
+        address: &str,
+        classification: Box<dyn PaymentClassification>,
+        schedule: Box<dyn PaymentSchedule>,
+        method: Box<dyn PaymentMethod>,
+        affiliation: Box<dyn Affiliation>,
+    ) -> Self {
+        Self {
+            emp_id,
+            name: name.to_string(),
+            address: address.to_string(),
+            classification,
+            schedule,
+            method,
+            affiliation,
+        }
+    }
+    pub fn set_name(&mut self, name: &str) {
+        self.name = name.to_string();
+    }
+    pub fn set_address(&mut self, address: &str) {
+        self.address = address.to_string();
+    }
+    pub fn set_classification(&mut self, classification: Box<dyn PaymentClassification>) {
+        self.classification = classification;
+    }
+    pub fn set_schedule(&mut self, schedule: Box<dyn PaymentSchedule>) {
+        self.schedule = schedule;
+    }
+    pub fn set_method(&mut self, method: Box<dyn PaymentMethod>) {
+        self.method = method;
+    }
+    pub fn set_affiliation(&mut self, affiliation: Box<dyn Affiliation>) {
+        self.affiliation = affiliation;
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
