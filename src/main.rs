@@ -36,6 +36,10 @@ trait EmployeeDao<Ctx> {
         &self,
         member_id: MemberId,
     ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
+    fn find_union_member(
+        &self,
+        member_id: MemberId,
+    ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeDaoError>;
 }
 trait HaveEmployeeDao<Ctx> {
     fn dao(&self) -> Box<&impl EmployeeDao<Ctx>>;
@@ -239,15 +243,20 @@ trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> {
 }
 
 trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
+    fn get_member_id(&self) -> MemberId;
     fn get_date(&self) -> NaiveDate;
     fn get_amount(&self) -> f64;
 
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
         tx_rs::with_tx(move |ctx| {
+            let emp_id = self
+                .dao()
+                .find_union_member(self.get_member_id())
+                .run(ctx)
+                .map_err(EmployeeUsecaseError::NotFound)?;
             let mut emp = self
                 .dao()
-                .fetch(self.get_emp_id())
+                .fetch(emp_id)
                 .run(ctx)
                 .map_err(EmployeeUsecaseError::NotFound)?;
             let affiliation = emp
@@ -256,7 +265,7 @@ trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                 .downcast_mut::<UnionAffiliation>()
                 .ok_or(EmployeeUsecaseError::NotUnionMember(format!(
                     "emp_id: {0}",
-                    self.get_emp_id()
+                    emp_id,
                 )))?;
             affiliation
                 .service_charges
@@ -791,6 +800,19 @@ impl EmployeeDao<()> for MockDb {
             Ok(())
         })
     }
+
+    fn find_union_member(
+        &self,
+        member_id: MemberId,
+    ) -> impl tx_rs::Tx<(), Item = EmployeeId, Err = EmployeeDaoError> {
+        tx_rs::with_tx(move |_| match self.union_members.borrow().get(&member_id) {
+            Some(&emp_id) => Ok(emp_id),
+            None => Err(EmployeeDaoError::FetchError(format!(
+                "member_id={} not found",
+                member_id
+            ))),
+        })
+    }
 }
 
 struct AddSalariedEmployeeTransactionImpl {
@@ -936,6 +958,30 @@ impl HaveEmployeeDao<()> for SalesReceiptTransactionImpl {
 impl SalesReceiptTransaction<()> for SalesReceiptTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
+    }
+    fn get_date(&self) -> NaiveDate {
+        self.date
+    }
+    fn get_amount(&self) -> f64 {
+        self.amount
+    }
+}
+
+struct ServiceChargeTransactionImpl {
+    db: MockDb,
+
+    member_id: MemberId,
+    date: NaiveDate,
+    amount: f64,
+}
+impl HaveEmployeeDao<()> for ServiceChargeTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl ServiceChargeTransaction<()> for ServiceChargeTransactionImpl {
+    fn get_member_id(&self) -> MemberId {
+        self.member_id
     }
     fn get_date(&self) -> NaiveDate {
         self.date
@@ -1289,6 +1335,15 @@ fn main() {
     };
     let _ = req.execute().run(&mut ()).expect("change union member");
     println!("change union member: {:#?}", db);
+
+    let req = ServiceChargeTransactionImpl {
+        db: db.clone(),
+        member_id: 7734,
+        date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
+        amount: 12.95,
+    };
+    let _ = req.execute().run(&mut ()).expect("service charge");
+    println!("service charge: {:#?}", db);
 
     let req = ChangeNoMemberTransactionImpl {
         db: db.clone(),
