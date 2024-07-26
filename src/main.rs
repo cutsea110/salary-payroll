@@ -357,6 +357,54 @@ trait ChangeCommissionedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     }
 }
 
+trait ChangeDirectTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+    fn get_bank(&self) -> &str;
+    fn get_account(&self) -> &str;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.exec(self.get_emp_id(), |emp| {
+            emp.method = Box::new(DirectMethod {
+                bank: self.get_bank().to_string(),
+                account: self.get_account().to_string(),
+            });
+            Ok(())
+        })
+    }
+}
+trait ChangeMailTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+    fn get_address(&self) -> &str;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.exec(self.get_emp_id(), |emp| {
+            emp.method = Box::new(MailMethod {
+                address: self.get_address().to_string(),
+            });
+            Ok(())
+        })
+    }
+}
+trait ChangeHoldTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn get_emp_id(&self) -> EmployeeId;
+
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.exec(self.get_emp_id(), |emp| {
+            emp.method = Box::new(HoldMethod);
+            Ok(())
+        })
+    }
+}
+
 trait PaymentClassification: DynClone + Debug {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -847,6 +895,66 @@ impl ChangeCommissionedTransaction<()> for ChangeCommissionedTransactionImpl {
     }
 }
 
+struct ChangeDirectTransactionImpl {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+    bank: String,
+    account: String,
+}
+impl HaveEmployeeDao<()> for ChangeDirectTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl ChangeDirectTransaction<()> for ChangeDirectTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+    fn get_bank(&self) -> &str {
+        &self.bank
+    }
+    fn get_account(&self) -> &str {
+        &self.account
+    }
+}
+
+struct ChangeMailTransactionImpl {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+    address: String,
+}
+impl HaveEmployeeDao<()> for ChangeMailTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl ChangeMailTransaction<()> for ChangeMailTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+    fn get_address(&self) -> &str {
+        &self.address
+    }
+}
+
+struct ChangeHoldTransactionImpl {
+    db: MockDb,
+
+    emp_id: EmployeeId,
+}
+impl HaveEmployeeDao<()> for ChangeHoldTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl ChangeHoldTransaction<()> for ChangeHoldTransactionImpl {
+    fn get_emp_id(&self) -> EmployeeId {
+        self.emp_id
+    }
+}
+
 fn main() {
     let db = MockDb {
         employee: Rc::new(RefCell::new(HashMap::new())),
@@ -953,6 +1061,30 @@ fn main() {
     };
     let _ = req.execute().run(&mut ()).expect("change salary");
     println!("change salary: {:#?}", db);
+
+    let req = ChangeDirectTransactionImpl {
+        db: db.clone(),
+        emp_id: 4,
+        bank: "mufg".to_string(),
+        account: "1234567".to_string(),
+    };
+    let _ = req.execute().run(&mut ()).expect("change direct");
+    println!("change direct: {:#?}", db);
+
+    let req = ChangeMailTransactionImpl {
+        db: db.clone(),
+        emp_id: 4,
+        address: "alice@gmail.com".to_string(),
+    };
+    let _ = req.execute().run(&mut ()).expect("change mail");
+    println!("change mail: {:#?}", db);
+
+    let req = ChangeHoldTransactionImpl {
+        db: db.clone(),
+        emp_id: 4,
+    };
+    let _ = req.execute().run(&mut ()).expect("change hold");
+    println!("change hold: {:#?}", db);
 
     for emp_id in 1..=4 {
         let req = DeleteEmployeeTransactionImpl {
