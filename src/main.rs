@@ -668,8 +668,9 @@ dyn_clone::clone_trait_object!(PaymentMethod);
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct HoldMethod;
 impl PaymentMethod for HoldMethod {
-    fn pay(&self, _pc: PayCheck) {
-        todo!()
+    fn pay(&self, pc: PayCheck) {
+        // concrete implementation
+        println!("HoldMethod: {:?}", pc);
     }
 }
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -677,8 +678,9 @@ struct MailMethod {
     address: String,
 }
 impl PaymentMethod for MailMethod {
-    fn pay(&self, _pc: PayCheck) {
-        todo!()
+    fn pay(&self, pc: PayCheck) {
+        // concrete implementation
+        println!("MailMethod for {}: {:?}", self.address, pc);
     }
 }
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -687,8 +689,9 @@ struct DirectMethod {
     account: String,
 }
 impl PaymentMethod for DirectMethod {
-    fn pay(&self, _pc: PayCheck) {
-        todo!()
+    fn pay(&self, pc: PayCheck) {
+        // concrete implementation
+        println!("DirectMethod to {}{}: {:?}", self.bank, self.account, pc);
     }
 }
 
