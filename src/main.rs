@@ -1,4 +1,4 @@
-use chrono::NaiveDate;
+use chrono::{Datelike, Days, NaiveDate, Weekday};
 use core::fmt::Debug;
 use dyn_clone::DynClone;
 use std::{any::Any, cell::RefCell, collections::HashMap, rc::Rc};
@@ -535,6 +535,7 @@ impl PaymentClassification for CommissionedClassification {
 trait PaymentSchedule: DynClone + Debug {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn is_pay_date(&self, date: NaiveDate) -> bool;
 }
 dyn_clone::clone_trait_object!(PaymentSchedule);
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -546,6 +547,14 @@ impl PaymentSchedule for MonthlySchedule {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
+    fn is_pay_date(&self, date: NaiveDate) -> bool {
+        self.is_last_day_of_month(date)
+    }
+}
+impl MonthlySchedule {
+    fn is_last_day_of_month(&self, date: NaiveDate) -> bool {
+        date.month() != date.checked_add_days(Days::new(1)).unwrap().month()
+    }
 }
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct WeeklySchedule;
@@ -556,6 +565,9 @@ impl PaymentSchedule for WeeklySchedule {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
+    fn is_pay_date(&self, date: NaiveDate) -> bool {
+        date.weekday() == Weekday::Fri
+    }
 }
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct BiweeklySchedule;
@@ -565,6 +577,9 @@ impl PaymentSchedule for BiweeklySchedule {
     }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+    fn is_pay_date(&self, date: NaiveDate) -> bool {
+        date.weekday() == Weekday::Fri && date.iso_week().week() % 2 == 0
     }
 }
 
