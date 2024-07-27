@@ -492,8 +492,9 @@ trait ChangeUnaffiliatedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
 
 trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     fn get_pay_date(&self) -> NaiveDate;
+    fn record_paycheck(&mut self, pc: PayCheck);
 
-    fn execute<'a>(&self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&mut self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
@@ -507,8 +508,9 @@ trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> {
             for emp in employees.iter_mut() {
                 if emp.is_pay_date(pay_date) {
                     let period = emp.get_pay_period(pay_date);
-                    let pc = PayCheck::new(period);
-                    emp.payday(pc);
+                    let mut pc = PayCheck::new(period);
+                    emp.payday(&mut pc);
+                    self.record_paycheck(pc);
                 }
             }
             Ok(())
@@ -662,13 +664,13 @@ impl PaymentSchedule for BiweeklySchedule {
 
 trait PaymentMethod: DynClone + Debug {
     // TODO: return type
-    fn pay(&self, pc: PayCheck);
+    fn pay(&self, pc: &PayCheck);
 }
 dyn_clone::clone_trait_object!(PaymentMethod);
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct HoldMethod;
 impl PaymentMethod for HoldMethod {
-    fn pay(&self, pc: PayCheck) {
+    fn pay(&self, pc: &PayCheck) {
         // concrete implementation
         println!("HoldMethod: {:?}", pc);
     }
@@ -678,7 +680,7 @@ struct MailMethod {
     address: String,
 }
 impl PaymentMethod for MailMethod {
-    fn pay(&self, pc: PayCheck) {
+    fn pay(&self, pc: &PayCheck) {
         // concrete implementation
         println!("MailMethod for {}: {:?}", self.address, pc);
     }
@@ -689,7 +691,7 @@ struct DirectMethod {
     account: String,
 }
 impl PaymentMethod for DirectMethod {
-    fn pay(&self, pc: PayCheck) {
+    fn pay(&self, pc: &PayCheck) {
         // concrete implementation
         println!("DirectMethod to {}{}: {:?}", self.bank, self.account, pc);
     }
@@ -794,7 +796,7 @@ impl Employee {
     pub fn get_pay_period(&self, date: NaiveDate) -> RangeInclusive<NaiveDate> {
         self.schedule.get_pay_period(date)
     }
-    pub fn payday(&self, mut pc: PayCheck) {
+    pub fn payday(&self, pc: &mut PayCheck) {
         let gross_pay = self.classification.calculate_pay(&pc);
         let deductions = self.affiliation.calculate_deductions(&pc);
         let net_pay = gross_pay - deductions;
@@ -1407,6 +1409,26 @@ impl ChangeUnaffiliatedTransaction<()> for ChangeNoMemberTransactionImpl {
     }
 }
 
+struct PaydayTransactionImpl {
+    db: MockDb,
+
+    pay_date: NaiveDate,
+    paychecks: Vec<PayCheck>,
+}
+impl HaveEmployeeDao<()> for PaydayTransactionImpl {
+    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+        Box::new(&self.db)
+    }
+}
+impl PaydayTransaction<()> for PaydayTransactionImpl {
+    fn get_pay_date(&self) -> NaiveDate {
+        self.pay_date
+    }
+    fn record_paycheck(&mut self, pc: PayCheck) {
+        self.paychecks.push(pc);
+    }
+}
+
 fn main() {
     let db = MockDb {
         employees: Rc::new(RefCell::new(HashMap::new())),
@@ -1572,4 +1594,146 @@ fn main() {
         let _ = req.execute().run(&mut ()).expect("delete employee");
         println!("deleted: {:#?}", db);
     }
+
+    // payday
+    let req = AddSalariedEmployeeTransactionImpl {
+        db: db.clone(),
+        emp_id: 1,
+        name: "Bob".to_string(),
+        address: "Home".to_string(),
+        salary: 1000.00,
+    };
+    let emp_id = req.execute().run(&mut ()).expect("add employee");
+    println!("emp_id: {:?}", emp_id);
+    println!("registered: {:#?}", db);
+    let mut req = PaydayTransactionImpl {
+        db: db.clone(),
+        pay_date: NaiveDate::from_ymd_opt(2024, 7, 29).unwrap(),
+        paychecks: vec![],
+    };
+    let _ = req.execute().run(&mut ()).expect("payday");
+    println!("paychecks: {:#?}", req.paychecks);
+
+    let mut req = PaydayTransactionImpl {
+        db: db.clone(),
+        pay_date: NaiveDate::from_ymd_opt(2024, 7, 31).unwrap(),
+        paychecks: vec![],
+    };
+    let _ = req.execute().run(&mut ()).expect("payday");
+    println!("paychecks: {:#?}", req.paychecks);
+
+    let req = DeleteEmployeeTransactionImpl {
+        db: db.clone(),
+        emp_id: 1,
+    };
+    let _ = req.execute().run(&mut ()).expect("delete employee");
+
+    let req = AddHourlyEmployeeTransactionImpl {
+        db: db.clone(),
+        emp_id: 2,
+        name: "Bill".to_string(),
+        address: "Home".to_string(),
+        hourly_rate: 15.25,
+    };
+    let emp_id = req.execute().run(&mut ()).expect("add employee");
+    println!("emp_id: {:?}", emp_id);
+    println!("registered: {:#?}", db);
+
+    let mut req = PaydayTransactionImpl {
+        db: db.clone(),
+        pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
+        paychecks: vec![],
+    };
+    let _ = req.execute().run(&mut ()).expect("payday");
+    println!("paychecks: {:#?}", req.paychecks);
+
+    let req = TimeCardTransactionImpl {
+        db: db.clone(),
+        emp_id: 2,
+        date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(),
+        hours: 2.0,
+    };
+    let _ = req.execute().run(&mut ()).expect("time card");
+
+    let mut req = PaydayTransactionImpl {
+        db: db.clone(),
+        pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
+        paychecks: vec![],
+    };
+    let _ = req.execute().run(&mut ()).expect("payday");
+    println!("paychecks: {:#?}", req.paychecks);
+
+    let req = TimeCardTransactionImpl {
+        db: db.clone(),
+        emp_id: 2,
+        date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
+        hours: 9.0,
+    };
+    let _ = req.execute().run(&mut ()).expect("time card");
+
+    let mut req = PaydayTransactionImpl {
+        db: db.clone(),
+        pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(), // Friday
+        paychecks: vec![],
+    };
+    let _ = req.execute().run(&mut ()).expect("payday");
+    println!("paychecks: {:#?}", req.paychecks);
+
+    let req = TimeCardTransactionImpl {
+        db: db.clone(),
+        emp_id: 2,
+        date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
+        hours: 5.0,
+    };
+    let _ = req.execute().run(&mut ()).expect("time card");
+
+    let mut req = PaydayTransactionImpl {
+        db: db.clone(),
+        pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
+        paychecks: vec![],
+    };
+    let _ = req.execute().run(&mut ()).expect("payday");
+    println!("paychecks: {:#?}", req.paychecks);
+
+    let mut req = PaydayTransactionImpl {
+        db: db.clone(),
+        pay_date: NaiveDate::from_ymd_opt(2024, 8, 8).unwrap(), // Thursday
+        paychecks: vec![],
+    };
+    let _ = req.execute().run(&mut ()).expect("payday");
+    println!("paychecks: {:#?}", req.paychecks);
+
+    let req = ChangeUnionMemberTransactionImpl {
+        db: db.clone(),
+        emp_id: 2,
+        member_id: 7734,
+        dues: 9.42,
+    };
+    let _ = req.execute().run(&mut ()).expect("change union member");
+    println!("emp_id: {:?}", emp_id);
+    println!("registered: {:#?}", db);
+
+    let mut req = PaydayTransactionImpl {
+        db: db.clone(),
+        pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
+        paychecks: vec![],
+    };
+    let _ = req.execute().run(&mut ()).expect("payday");
+    println!("paychecks: {:#?}", req.paychecks);
+
+    let req = ServiceChargeTransactionImpl {
+        db: db.clone(),
+        member_id: 7734,
+        date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
+        amount: 19.40,
+    };
+    let _ = req.execute().run(&mut ()).expect("service charge");
+
+    let mut req = PaydayTransactionImpl {
+        db: db.clone(),
+        pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
+        paychecks: vec![],
+    };
+    let _ = req.execute().run(&mut ()).expect("payday");
+    println!("paychecks: {:#?}", req.paychecks);
 }
