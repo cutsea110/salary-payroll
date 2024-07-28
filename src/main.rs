@@ -710,7 +710,7 @@ trait Affiliation: DynClone + Debug {
 dyn_clone::clone_trait_object!(Affiliation);
 #[derive(Debug, Clone, PartialEq)]
 struct UnionAffiliation {
-    member_id: u32,
+    member_id: MemberId,
     dues: f64,
 
     service_charges: Vec<ServiceCharge>,
