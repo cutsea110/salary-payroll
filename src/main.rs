@@ -333,7 +333,27 @@ trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         })
     }
 }
-trait ChangeSalariedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+trait ChangeClassificationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn exec_classification<'a>(
+        &'a self,
+        emp_id: EmployeeId,
+        classification: Box<dyn PaymentClassification>,
+        schedule: Box<dyn PaymentSchedule>,
+    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.exec(emp_id, |_, emp| {
+            emp.set_classification(classification);
+            emp.set_schedule(schedule);
+            Ok(())
+        })
+    }
+}
+// blanket implementation
+impl<Ctx, T> ChangeClassificationTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
+
+trait ChangeSalariedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
     fn get_salary(&self) -> f64;
 
@@ -341,16 +361,16 @@ trait ChangeSalariedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |_, emp| {
-            emp.set_classification(Box::new(SalariedClassification {
+        self.exec_classification(
+            self.get_emp_id(),
+            Box::new(SalariedClassification {
                 salary: self.get_salary(),
-            }));
-            emp.set_schedule(Box::new(MonthlySchedule));
-            Ok(())
-        })
+            }),
+            Box::new(MonthlySchedule),
+        )
     }
 }
-trait ChangeHourlyTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+trait ChangeHourlyTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
     fn get_hourly_rate(&self) -> f64;
 
@@ -358,17 +378,17 @@ trait ChangeHourlyTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |_, emp| {
-            emp.set_classification(Box::new(HourlyClassification {
+        self.exec_classification(
+            self.get_emp_id(),
+            Box::new(HourlyClassification {
                 hourly_rate: self.get_hourly_rate(),
                 timecards: vec![],
-            }));
-            emp.set_schedule(Box::new(WeeklySchedule));
-            Ok(())
-        })
+            }),
+            Box::new(WeeklySchedule),
+        )
     }
 }
-trait ChangeCommissionedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+trait ChangeCommissionedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
     fn get_salary(&self) -> f64;
     fn get_commission_rate(&self) -> f64;
@@ -377,15 +397,15 @@ trait ChangeCommissionedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |_, emp| {
-            emp.set_classification(Box::new(CommissionedClassification {
+        self.exec_classification(
+            self.get_emp_id(),
+            Box::new(CommissionedClassification {
                 salary: self.get_salary(),
                 commission_rate: self.get_commission_rate(),
                 sales_receipts: vec![],
-            }));
-            emp.set_schedule(Box::new(BiweeklySchedule));
-            Ok(())
-        })
+            }),
+            Box::new(BiweeklySchedule),
+        )
     }
 }
 
