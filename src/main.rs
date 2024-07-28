@@ -519,7 +519,6 @@ trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> {
 }
 
 trait PaymentClassification: DynClone + Debug {
-    fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn calculate_pay(&self, pc: &PayCheck) -> f64;
 }
@@ -529,9 +528,6 @@ struct SalariedClassification {
     salary: f64,
 }
 impl PaymentClassification for SalariedClassification {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
@@ -545,9 +541,6 @@ struct HourlyClassification {
     timecards: Vec<TimeCard>,
 }
 impl PaymentClassification for HourlyClassification {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
@@ -577,9 +570,6 @@ struct CommissionedClassification {
     sales_receipts: Vec<SalesReceipt>,
 }
 impl PaymentClassification for CommissionedClassification {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
@@ -601,8 +591,6 @@ impl CommissionedClassification {
 }
 
 trait PaymentSchedule: DynClone + Debug {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
     fn is_pay_date(&self, date: NaiveDate) -> bool;
     fn get_pay_period(&self, pay_date: NaiveDate) -> RangeInclusive<NaiveDate>;
 }
@@ -610,12 +598,6 @@ dyn_clone::clone_trait_object!(PaymentSchedule);
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct MonthlySchedule;
 impl PaymentSchedule for MonthlySchedule {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
     fn is_pay_date(&self, date: NaiveDate) -> bool {
         self.is_last_day_of_month(date)
     }
@@ -632,12 +614,6 @@ impl MonthlySchedule {
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct WeeklySchedule;
 impl PaymentSchedule for WeeklySchedule {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
     fn is_pay_date(&self, date: NaiveDate) -> bool {
         date.weekday() == Weekday::Fri
     }
@@ -648,12 +624,6 @@ impl PaymentSchedule for WeeklySchedule {
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct BiweeklySchedule;
 impl PaymentSchedule for BiweeklySchedule {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
     fn is_pay_date(&self, date: NaiveDate) -> bool {
         date.weekday() == Weekday::Fri && date.iso_week().week() % 2 == 0
     }
@@ -700,7 +670,7 @@ impl PaymentMethod for DirectMethod {
 trait Affiliation: DynClone + Debug {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn calculate_deductions(&self, pc: &PayCheck) -> f64 {
+    fn calculate_deductions(&self, _pc: &PayCheck) -> f64 {
         0.0
     }
 }
@@ -715,9 +685,6 @@ struct UnionAffiliation {
 impl UnionAffiliation {
     fn get_dues(&self) -> f64 {
         self.dues
-    }
-    fn get_service_charge(&self) -> Vec<ServiceCharge> {
-        self.service_charges.clone()
     }
 }
 impl Affiliation for UnionAffiliation {
@@ -811,14 +778,8 @@ impl Employee {
     pub fn set_address(&mut self, address: &str) {
         self.address = address.to_string();
     }
-    pub fn get_classification(&self) -> Box<dyn PaymentClassification> {
-        self.classification.clone()
-    }
     pub fn set_classification(&mut self, classification: Box<dyn PaymentClassification>) {
         self.classification = classification;
-    }
-    pub fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
-        self.schedule.clone()
     }
     pub fn set_schedule(&mut self, schedule: Box<dyn PaymentSchedule>) {
         self.schedule = schedule;
