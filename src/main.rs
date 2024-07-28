@@ -472,7 +472,28 @@ trait ChangeHoldTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
     }
 }
 
-trait ChangeUnionMemberTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+trait ChangeAffiliationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn exec_affiliation<'a, F>(
+        &'a self,
+        emp_id: EmployeeId,
+        record_membership: F,
+        affiliation: Box<dyn Affiliation>,
+    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError> + 'a,
+        Ctx: 'a,
+    {
+        self.exec(emp_id, |ctx, emp| {
+            record_membership(ctx, emp)?;
+            emp.set_affiliation(affiliation);
+            Ok(())
+        })
+    }
+}
+// blanket implementation
+impl<Ctx, T> ChangeAffiliationTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
+
+trait ChangeUnionMemberTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
     fn get_member_id(&self) -> MemberId;
     fn get_dues(&self) -> f64;
@@ -481,44 +502,50 @@ trait ChangeUnionMemberTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |ctx, emp| {
-            self.dao()
-                .add_union_member(self.get_member_id(), self.get_emp_id())
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::AddUnionMemberFailed)?;
-
-            emp.set_affiliation(Box::new(UnionAffiliation {
+        self.exec_affiliation(
+            self.get_emp_id(),
+            |ctx, _emp| {
+                self.dao()
+                    .add_union_member(self.get_member_id(), self.get_emp_id())
+                    .run(ctx)
+                    .map_err(EmployeeUsecaseError::AddUnionMemberFailed)
+            },
+            Box::new(UnionAffiliation {
                 member_id: self.get_member_id(),
                 dues: self.get_dues(),
                 service_charges: vec![],
-            }));
-            Ok(())
-        })
+            }),
+        )
     }
 }
-trait ChangeUnaffiliatedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+trait ChangeUnaffiliatedTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
 
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |ctx, emp| {
-            let member_id = emp
-                .get_affiliation()
-                .as_any()
-                .downcast_ref::<UnionAffiliation>()
-                .map(|a| a.member_id);
-            if let Some(member_id) = member_id {
+        self.exec_affiliation(
+            self.get_emp_id(),
+            |ctx, emp| {
+                let member_id = emp
+                    .get_affiliation()
+                    .as_any()
+                    .downcast_ref::<UnionAffiliation>()
+                    .map_or(
+                        Err(EmployeeUsecaseError::NotUnionMember(format!(
+                            "emp_id: {}",
+                            self.get_emp_id()
+                        ))),
+                        |a| Ok(a.member_id),
+                    )?;
                 self.dao()
                     .remove_union_member(member_id)
                     .run(ctx)
-                    .map_err(EmployeeUsecaseError::RemoveUnionMemberFailed)?;
-            }
-
-            emp.set_affiliation(Box::new(NoAffiliation));
-            Ok(())
-        })
+                    .map_err(EmployeeUsecaseError::RemoveUnionMemberFailed)
+            },
+            Box::new(NoAffiliation),
+        )
     }
 }
 
