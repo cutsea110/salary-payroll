@@ -313,7 +313,7 @@ trait ChangeNameTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |_, emp| {
+        self.exec(self.get_emp_id(), |_ctx, emp| {
             emp.set_name(self.get_name());
             Ok(())
         })
@@ -327,7 +327,7 @@ trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |_, emp| {
+        self.exec(self.get_emp_id(), |_ctx, emp| {
             emp.set_address(self.get_address());
             Ok(())
         })
@@ -343,7 +343,7 @@ trait ChangeClassificationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(emp_id, |_, emp| {
+        self.exec(emp_id, |_ctx, emp| {
             emp.set_classification(classification);
             emp.set_schedule(schedule);
             Ok(())
@@ -409,7 +409,25 @@ trait ChangeCommissionedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
     }
 }
 
-trait ChangeDirectTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+trait ChangeMethodTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    fn exec_method<'a>(
+        &'a self,
+        emp_id: EmployeeId,
+        method: Box<dyn PaymentMethod>,
+    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    where
+        Ctx: 'a,
+    {
+        self.exec(emp_id, |_ctx, emp| {
+            emp.set_method(method);
+            Ok(())
+        })
+    }
+}
+// blanket implementation
+impl<Ctx, T> ChangeMethodTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
+
+trait ChangeDirectTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
     fn get_bank(&self) -> &str;
     fn get_account(&self) -> &str;
@@ -418,16 +436,16 @@ trait ChangeDirectTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |_, emp| {
-            emp.set_method(Box::new(DirectMethod {
+        self.exec_method(
+            self.get_emp_id(),
+            Box::new(DirectMethod {
                 bank: self.get_bank().to_string(),
                 account: self.get_account().to_string(),
-            }));
-            Ok(())
-        })
+            }),
+        )
     }
 }
-trait ChangeMailTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+trait ChangeMailTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
     fn get_address(&self) -> &str;
 
@@ -435,25 +453,22 @@ trait ChangeMailTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |_, emp| {
-            emp.set_method(Box::new(MailMethod {
+        self.exec_method(
+            self.get_emp_id(),
+            Box::new(MailMethod {
                 address: self.get_address().to_string(),
-            }));
-            Ok(())
-        })
+            }),
+        )
     }
 }
-trait ChangeHoldTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+trait ChangeHoldTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
 
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
     where
         Ctx: 'a,
     {
-        self.exec(self.get_emp_id(), |_, emp| {
-            emp.set_method(Box::new(HoldMethod));
-            Ok(())
-        })
+        self.exec_method(self.get_emp_id(), Box::new(HoldMethod {}))
     }
 }
 
