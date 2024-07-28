@@ -481,20 +481,18 @@ trait ChangeUnionMemberTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        tx_rs::with_tx(move |ctx| {
+        self.exec(self.get_emp_id(), |ctx, emp| {
             self.dao()
                 .add_union_member(self.get_member_id(), self.get_emp_id())
                 .run(ctx)
                 .map_err(EmployeeUsecaseError::AddUnionMemberFailed)?;
-            self.exec(self.get_emp_id(), |_, emp| {
-                emp.set_affiliation(Box::new(UnionAffiliation {
-                    member_id: self.get_member_id(),
-                    dues: self.get_dues(),
-                    service_charges: vec![],
-                }));
-                Ok(())
-            })
-            .run(ctx)
+
+            emp.set_affiliation(Box::new(UnionAffiliation {
+                member_id: self.get_member_id(),
+                dues: self.get_dues(),
+                service_charges: vec![],
+            }));
+            Ok(())
         })
     }
 }
@@ -517,6 +515,7 @@ trait ChangeUnaffiliatedTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
                     .run(ctx)
                     .map_err(EmployeeUsecaseError::RemoveUnionMemberFailed)?;
             }
+
             emp.set_affiliation(Box::new(NoAffiliation));
             Ok(())
         })
