@@ -82,11 +82,9 @@ trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     where
         Ctx: 'a,
     {
-        let name = name.to_string();
-        let address = address.to_string();
         let method = Box::new(HoldMethod);
         let affiliation = Box::new(NoAffiliation);
-        let emp = Employee {
+        let emp = Employee::new(
             emp_id,
             name,
             address,
@@ -94,7 +92,7 @@ trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
             schedule,
             method,
             affiliation,
-        };
+        );
         self.dao()
             .insert(emp)
             .map_err(EmployeeUsecaseError::RegisterEmployeeFailed)
