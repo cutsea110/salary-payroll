@@ -1,9 +1,152 @@
 use chrono::{Datelike, Days, NaiveDate, Weekday};
 use core::fmt::Debug;
-use dyn_clone::DynClone;
 use std::{any::Any, cell::RefCell, collections::HashMap, ops::RangeInclusive, rc::Rc};
 use thiserror::Error;
 use tx_rs::Tx;
+
+mod domain {
+    use chrono::NaiveDate;
+    use core::fmt::Debug;
+    use dyn_clone::DynClone;
+    use std::any::Any;
+    use std::ops::RangeInclusive;
+
+    pub type EmployeeId = u32;
+    pub type MemberId = u32;
+
+    #[derive(Debug, Clone)]
+    pub struct Employee {
+        emp_id: EmployeeId,
+        name: String,
+        address: String,
+        classification: Box<dyn PaymentClassification>,
+        schedule: Box<dyn PaymentSchedule>,
+        method: Box<dyn PaymentMethod>,
+        affiliation: Box<dyn Affiliation>,
+    }
+    impl Employee {
+        pub fn new(
+            emp_id: EmployeeId,
+            name: &str,
+            address: &str,
+            classification: Box<dyn PaymentClassification>,
+            schedule: Box<dyn PaymentSchedule>,
+            method: Box<dyn PaymentMethod>,
+            affiliation: Box<dyn Affiliation>,
+        ) -> Self {
+            Self {
+                emp_id,
+                name: name.to_string(),
+                address: address.to_string(),
+                classification,
+                schedule,
+                method,
+                affiliation,
+            }
+        }
+        pub fn is_pay_date(&self, date: NaiveDate) -> bool {
+            self.schedule.is_pay_date(date)
+        }
+        pub fn get_pay_period(&self, date: NaiveDate) -> RangeInclusive<NaiveDate> {
+            self.schedule.get_pay_period(date)
+        }
+        pub fn payday(&self, pc: &mut PayCheck) {
+            let gross_pay = self.classification.calculate_pay(&pc);
+            let deductions = self.affiliation.calculate_deductions(&pc);
+            let net_pay = gross_pay - deductions;
+            pc.set_gross_pay(gross_pay);
+            pc.set_deductions(deductions);
+            pc.set_net_pay(net_pay);
+            self.method.pay(pc);
+        }
+        pub fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        pub fn set_name(&mut self, name: &str) {
+            self.name = name.to_string();
+        }
+        pub fn set_address(&mut self, address: &str) {
+            self.address = address.to_string();
+        }
+        pub fn get_classification(&self) -> Box<dyn PaymentClassification> {
+            self.classification.clone()
+        }
+        pub fn set_classification(&mut self, classification: Box<dyn PaymentClassification>) {
+            self.classification = classification;
+        }
+        pub fn set_schedule(&mut self, schedule: Box<dyn PaymentSchedule>) {
+            self.schedule = schedule;
+        }
+        pub fn set_method(&mut self, method: Box<dyn PaymentMethod>) {
+            self.method = method;
+        }
+        pub fn get_affiliation(&self) -> Box<dyn Affiliation> {
+            self.affiliation.clone()
+        }
+        pub fn set_affiliation(&mut self, affiliation: Box<dyn Affiliation>) {
+            self.affiliation = affiliation;
+        }
+    }
+
+    pub trait PaymentClassification: DynClone + Debug {
+        fn as_any_mut(&mut self) -> &mut dyn Any;
+        fn calculate_pay(&self, pc: &PayCheck) -> f64;
+    }
+    dyn_clone::clone_trait_object!(PaymentClassification);
+
+    pub trait PaymentSchedule: DynClone + Debug {
+        fn is_pay_date(&self, date: NaiveDate) -> bool;
+        fn get_pay_period(&self, pay_date: NaiveDate) -> RangeInclusive<NaiveDate>;
+    }
+    dyn_clone::clone_trait_object!(PaymentSchedule);
+
+    pub trait PaymentMethod: DynClone + Debug {
+        // TODO: return type
+        fn pay(&self, pc: &PayCheck);
+    }
+    dyn_clone::clone_trait_object!(PaymentMethod);
+
+    pub trait Affiliation: DynClone + Debug {
+        fn as_any(&self) -> &dyn Any;
+        fn as_any_mut(&mut self) -> &mut dyn Any;
+        fn calculate_deductions(&self, _pc: &PayCheck) -> f64 {
+            0.0
+        }
+    }
+    dyn_clone::clone_trait_object!(Affiliation);
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct PayCheck {
+        period: RangeInclusive<NaiveDate>,
+
+        gross_pay: f64,
+        deductions: f64,
+        net_pay: f64,
+    }
+    impl PayCheck {
+        pub fn new(period: RangeInclusive<NaiveDate>) -> Self {
+            Self {
+                period,
+                gross_pay: 0.0,
+                deductions: 0.0,
+                net_pay: 0.0,
+            }
+        }
+        pub fn get_pay_period(&self) -> RangeInclusive<NaiveDate> {
+            self.period.clone()
+        }
+        pub fn set_gross_pay(&mut self, gross_pay: f64) {
+            self.gross_pay = gross_pay;
+        }
+        pub fn set_deductions(&mut self, deductions: f64) {
+            self.deductions = deductions;
+        }
+        pub fn set_net_pay(&mut self, net_pay: f64) {
+            self.net_pay = net_pay;
+        }
+    }
+}
+use domain::*;
 
 #[derive(Debug, Clone, Eq, PartialEq, Error)]
 enum EmployeeDaoError {
@@ -189,13 +332,13 @@ trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> {
 
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
         tx_rs::with_tx(move |ctx| {
-            let mut emp = self
+            let emp = self
                 .dao()
                 .fetch(self.get_emp_id())
                 .run(ctx)
                 .map_err(EmployeeUsecaseError::NotFound)?;
-            let hourly = emp
-                .classification
+            let mut binding = emp.get_classification();
+            let hourly = binding
                 .as_any_mut()
                 .downcast_mut::<HourlyClassification>()
                 .ok_or(EmployeeUsecaseError::NotHourlySalary(format!(
@@ -220,13 +363,13 @@ trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> {
 
     fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
         tx_rs::with_tx(move |ctx| {
-            let mut emp = self
+            let emp = self
                 .dao()
                 .fetch(self.get_emp_id())
                 .run(ctx)
                 .map_err(EmployeeUsecaseError::NotFound)?;
-            let commissioned = emp
-                .classification
+            let mut binding = emp.get_classification();
+            let commissioned = binding
                 .as_any_mut()
                 .downcast_mut::<CommissionedClassification>()
                 .ok_or(EmployeeUsecaseError::NotCommissionedSalary(format!(
@@ -256,13 +399,13 @@ trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                 .find_union_member(self.get_member_id())
                 .run(ctx)
                 .map_err(EmployeeUsecaseError::NotFound)?;
-            let mut emp = self
+            let emp = self
                 .dao()
                 .fetch(emp_id)
                 .run(ctx)
                 .map_err(EmployeeUsecaseError::NotFound)?;
-            let affiliation = emp
-                .affiliation
+            let mut binding = emp.get_affiliation();
+            let affiliation = binding
                 .as_any_mut()
                 .downcast_mut::<UnionAffiliation>()
                 .ok_or(EmployeeUsecaseError::NotUnionMember(format!(
@@ -579,11 +722,6 @@ trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     }
 }
 
-trait PaymentClassification: DynClone + Debug {
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn calculate_pay(&self, pc: &PayCheck) -> f64;
-}
-dyn_clone::clone_trait_object!(PaymentClassification);
 #[derive(Debug, Clone, PartialEq)]
 struct SalariedClassification {
     salary: f64,
@@ -651,11 +789,6 @@ impl CommissionedClassification {
     }
 }
 
-trait PaymentSchedule: DynClone + Debug {
-    fn is_pay_date(&self, date: NaiveDate) -> bool;
-    fn get_pay_period(&self, pay_date: NaiveDate) -> RangeInclusive<NaiveDate>;
-}
-dyn_clone::clone_trait_object!(PaymentSchedule);
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct MonthlySchedule;
 impl PaymentSchedule for MonthlySchedule {
@@ -693,11 +826,6 @@ impl PaymentSchedule for BiweeklySchedule {
     }
 }
 
-trait PaymentMethod: DynClone + Debug {
-    // TODO: return type
-    fn pay(&self, pc: &PayCheck);
-}
-dyn_clone::clone_trait_object!(PaymentMethod);
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct HoldMethod;
 impl PaymentMethod for HoldMethod {
@@ -728,14 +856,6 @@ impl PaymentMethod for DirectMethod {
     }
 }
 
-trait Affiliation: DynClone + Debug {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn calculate_deductions(&self, _pc: &PayCheck) -> f64 {
-        0.0
-    }
-}
-dyn_clone::clone_trait_object!(Affiliation);
 #[derive(Debug, Clone, PartialEq)]
 struct UnionAffiliation {
     member_id: MemberId,
@@ -782,108 +902,6 @@ impl Affiliation for NoAffiliation {
     }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
-    }
-}
-
-type EmployeeId = u32;
-type MemberId = u32;
-
-#[derive(Debug, Clone)]
-struct Employee {
-    emp_id: EmployeeId,
-    name: String,
-    address: String,
-    classification: Box<dyn PaymentClassification>,
-    schedule: Box<dyn PaymentSchedule>,
-    method: Box<dyn PaymentMethod>,
-    affiliation: Box<dyn Affiliation>,
-}
-impl Employee {
-    pub fn new(
-        emp_id: EmployeeId,
-        name: &str,
-        address: &str,
-        classification: Box<dyn PaymentClassification>,
-        schedule: Box<dyn PaymentSchedule>,
-        method: Box<dyn PaymentMethod>,
-        affiliation: Box<dyn Affiliation>,
-    ) -> Self {
-        Self {
-            emp_id,
-            name: name.to_string(),
-            address: address.to_string(),
-            classification,
-            schedule,
-            method,
-            affiliation,
-        }
-    }
-    pub fn is_pay_date(&self, date: NaiveDate) -> bool {
-        self.schedule.is_pay_date(date)
-    }
-    pub fn get_pay_period(&self, date: NaiveDate) -> RangeInclusive<NaiveDate> {
-        self.schedule.get_pay_period(date)
-    }
-    pub fn payday(&self, pc: &mut PayCheck) {
-        let gross_pay = self.classification.calculate_pay(&pc);
-        let deductions = self.affiliation.calculate_deductions(&pc);
-        let net_pay = gross_pay - deductions;
-        pc.set_gross_pay(gross_pay);
-        pc.set_deductions(deductions);
-        pc.set_net_pay(net_pay);
-        self.method.pay(pc);
-    }
-    pub fn set_name(&mut self, name: &str) {
-        self.name = name.to_string();
-    }
-    pub fn set_address(&mut self, address: &str) {
-        self.address = address.to_string();
-    }
-    pub fn set_classification(&mut self, classification: Box<dyn PaymentClassification>) {
-        self.classification = classification;
-    }
-    pub fn set_schedule(&mut self, schedule: Box<dyn PaymentSchedule>) {
-        self.schedule = schedule;
-    }
-    pub fn set_method(&mut self, method: Box<dyn PaymentMethod>) {
-        self.method = method;
-    }
-    pub fn get_affiliation(&self) -> Box<dyn Affiliation> {
-        self.affiliation.clone()
-    }
-    pub fn set_affiliation(&mut self, affiliation: Box<dyn Affiliation>) {
-        self.affiliation = affiliation;
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct PayCheck {
-    period: RangeInclusive<NaiveDate>,
-
-    gross_pay: f64,
-    deductions: f64,
-    net_pay: f64,
-}
-impl PayCheck {
-    fn new(period: RangeInclusive<NaiveDate>) -> Self {
-        Self {
-            period,
-            gross_pay: 0.0,
-            deductions: 0.0,
-            net_pay: 0.0,
-        }
-    }
-    fn get_pay_period(&self) -> RangeInclusive<NaiveDate> {
-        self.period.clone()
-    }
-    fn set_gross_pay(&mut self, gross_pay: f64) {
-        self.gross_pay = gross_pay;
-    }
-    fn set_deductions(&mut self, deductions: f64) {
-        self.deductions = deductions;
-    }
-    fn set_net_pay(&mut self, net_pay: f64) {
-        self.net_pay = net_pay;
     }
 }
 
@@ -949,7 +967,7 @@ impl EmployeeDao<()> for MockDb {
         emp: Employee,
     ) -> impl tx_rs::Tx<(), Item = EmployeeId, Err = EmployeeDaoError> {
         tx_rs::with_tx(move |_| {
-            let emp_id = emp.emp_id;
+            let emp_id = emp.get_emp_id();
             if self.employees.borrow().contains_key(&emp_id) {
                 return Err(EmployeeDaoError::InsertError(format!(
                     "emp_id={} already exists",
@@ -985,7 +1003,7 @@ impl EmployeeDao<()> for MockDb {
     }
     fn update(&self, emp: Employee) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
         tx_rs::with_tx(move |_| {
-            let emp_id = emp.emp_id;
+            let emp_id = emp.get_emp_id();
             if !self.employees.borrow().contains_key(&emp_id) {
                 return Err(EmployeeDaoError::UpdateError(format!(
                     "emp_id={} not found",
