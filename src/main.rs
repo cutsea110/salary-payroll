@@ -329,7 +329,6 @@ mod classification {
         }
     }
 }
-use classification::*;
 
 mod schedule {
     use chrono::{Datelike, Days, NaiveDate, Weekday};
@@ -374,7 +373,6 @@ mod schedule {
         }
     }
 }
-use schedule::*;
 
 mod method {
     use crate::domain::{PayCheck, PaymentMethod};
@@ -673,7 +671,7 @@ mod general_tx {
     use crate::dao::{EmployeeDao, HaveEmployeeDao};
     use crate::domain::EmployeeId;
     use crate::schedule::{BiweeklySchedule, MonthlySchedule, WeeklySchedule};
-    use crate::tx_base::{AddEmployeeTransaction, EmployeeUsecaseError};
+    use crate::tx_base::{AddEmployeeTransaction, ChangeEmployeeTransaction, EmployeeUsecaseError};
 
     pub trait AddSalaryEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
         fn get_emp_id(&self) -> EmployeeId;
@@ -814,8 +812,98 @@ mod general_tx {
             })
         }
     }
+
+    pub trait ChangeNameTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_name(&self) -> &str;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec(self.get_emp_id(), |_ctx, emp| {
+                emp.set_name(self.get_name());
+                Ok(())
+            })
+        }
+    }
+
+    pub trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_address(&self) -> &str;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec(self.get_emp_id(), |_ctx, emp| {
+                emp.set_address(self.get_address());
+                Ok(())
+            })
+        }
+    }
 }
 use general_tx::*;
+
+mod classification_tx {
+    use crate::classification::{
+        CommissionedClassification, HourlyClassification, SalariedClassification,
+    };
+    use crate::domain::EmployeeId;
+    use crate::schedule::{BiweeklySchedule, MonthlySchedule, WeeklySchedule};
+    use crate::tx_base::{ChangeClassificationTransaction, EmployeeUsecaseError};
+
+    pub trait ChangeSalariedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_salary(&self) -> f64;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec_classification(
+                self.get_emp_id(),
+                Box::new(SalariedClassification::new(self.get_salary())),
+                Box::new(MonthlySchedule),
+            )
+        }
+    }
+    pub trait ChangeHourlyTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_hourly_rate(&self) -> f64;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec_classification(
+                self.get_emp_id(),
+                Box::new(HourlyClassification::new(self.get_hourly_rate())),
+                Box::new(WeeklySchedule),
+            )
+        }
+    }
+    pub trait ChangeCommissionedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_salary(&self) -> f64;
+        fn get_commission_rate(&self) -> f64;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec_classification(
+                self.get_emp_id(),
+                Box::new(CommissionedClassification::new(
+                    self.get_salary(),
+                    self.get_commission_rate(),
+                )),
+                Box::new(BiweeklySchedule),
+            )
+        }
+    }
+}
+use classification_tx::*;
 
 trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     fn get_member_id(&self) -> MemberId;
@@ -848,85 +936,6 @@ trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                 .run(ctx)
                 .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
         })
-    }
-}
-
-trait ChangeNameTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_name(&self) -> &str;
-
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec(self.get_emp_id(), |_ctx, emp| {
-            emp.set_name(self.get_name());
-            Ok(())
-        })
-    }
-}
-trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_address(&self) -> &str;
-
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec(self.get_emp_id(), |_ctx, emp| {
-            emp.set_address(self.get_address());
-            Ok(())
-        })
-    }
-}
-
-trait ChangeSalariedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_salary(&self) -> f64;
-
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec_classification(
-            self.get_emp_id(),
-            Box::new(SalariedClassification::new(self.get_salary())),
-            Box::new(MonthlySchedule),
-        )
-    }
-}
-trait ChangeHourlyTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_hourly_rate(&self) -> f64;
-
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec_classification(
-            self.get_emp_id(),
-            Box::new(HourlyClassification::new(self.get_hourly_rate())),
-            Box::new(WeeklySchedule),
-        )
-    }
-}
-trait ChangeCommissionedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_salary(&self) -> f64;
-    fn get_commission_rate(&self) -> f64;
-
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec_classification(
-            self.get_emp_id(),
-            Box::new(CommissionedClassification::new(
-                self.get_salary(),
-                self.get_commission_rate(),
-            )),
-            Box::new(BiweeklySchedule),
-        )
     }
 }
 
