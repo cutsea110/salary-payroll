@@ -148,46 +148,56 @@ mod domain {
 }
 use domain::*;
 
-#[derive(Debug, Clone, Eq, PartialEq, Error)]
-enum EmployeeDaoError {
-    #[error("insert error: {0}")]
-    InsertError(String),
-    #[error("delete error: {0}")]
-    DeleteError(String),
-    #[error("fetch error: {0}")]
-    FetchError(String),
-    #[error("update error: {0}")]
-    UpdateError(String),
+mod dao {
+    use thiserror::Error;
+
+    use crate::domain::{Employee, EmployeeId, MemberId};
+
+    #[derive(Debug, Clone, Eq, PartialEq, Error)]
+    pub enum EmployeeDaoError {
+        #[error("insert error: {0}")]
+        InsertError(String),
+        #[error("delete error: {0}")]
+        DeleteError(String),
+        #[error("fetch error: {0}")]
+        FetchError(String),
+        #[error("update error: {0}")]
+        UpdateError(String),
+    }
+    pub trait EmployeeDao<Ctx> {
+        fn insert(
+            &self,
+            emp: Employee,
+        ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeDaoError>;
+        fn delete(
+            &self,
+            emp_id: EmployeeId,
+        ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
+        fn fetch(
+            &self,
+            emp_id: EmployeeId,
+        ) -> impl tx_rs::Tx<Ctx, Item = Employee, Err = EmployeeDaoError>;
+        fn update(&self, emp: Employee) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
+        fn get_all(&self) -> impl tx_rs::Tx<Ctx, Item = Vec<Employee>, Err = EmployeeDaoError>;
+        fn add_union_member(
+            &self,
+            member_id: MemberId,
+            emp_id: EmployeeId,
+        ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
+        fn remove_union_member(
+            &self,
+            member_id: MemberId,
+        ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
+        fn find_union_member(
+            &self,
+            member_id: MemberId,
+        ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeDaoError>;
+    }
+    pub trait HaveEmployeeDao<Ctx> {
+        fn dao(&self) -> Box<&impl EmployeeDao<Ctx>>;
+    }
 }
-trait EmployeeDao<Ctx> {
-    fn insert(
-        &self,
-        emp: Employee,
-    ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeDaoError>;
-    fn delete(&self, emp_id: EmployeeId) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
-    fn fetch(
-        &self,
-        emp_id: EmployeeId,
-    ) -> impl tx_rs::Tx<Ctx, Item = Employee, Err = EmployeeDaoError>;
-    fn update(&self, emp: Employee) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
-    fn get_all(&self) -> impl tx_rs::Tx<Ctx, Item = Vec<Employee>, Err = EmployeeDaoError>;
-    fn add_union_member(
-        &self,
-        member_id: MemberId,
-        emp_id: EmployeeId,
-    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
-    fn remove_union_member(
-        &self,
-        member_id: MemberId,
-    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
-    fn find_union_member(
-        &self,
-        member_id: MemberId,
-    ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeDaoError>;
-}
-trait HaveEmployeeDao<Ctx> {
-    fn dao(&self) -> Box<&impl EmployeeDao<Ctx>>;
-}
+use dao::*;
 
 #[derive(Debug, Clone, Eq, PartialEq, Error)]
 enum EmployeeUsecaseError {
