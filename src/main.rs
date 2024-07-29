@@ -574,19 +574,6 @@ mod tx_base {
     // blanket implementation
     impl<T, Ctx> AddEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> {}
 
-    pub trait DeleteEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-        fn get_emp_id(&self) -> EmployeeId;
-
-        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-        where
-            Ctx: 'a,
-        {
-            self.dao()
-                .delete(self.get_emp_id())
-                .map_err(EmployeeUsecaseError::UnregisterEmployeeFailed)
-        }
-    }
-
     pub trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
         fn exec<'a, F>(
             &'a self,
@@ -675,125 +662,160 @@ mod tx_base {
 }
 use tx_base::*;
 
-trait AddSalaryEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_name(&self) -> &str;
-    fn get_address(&self) -> &str;
-    fn get_salary(&self) -> f64;
+mod general_tx {
+    use chrono::NaiveDate;
+    use tx_rs::Tx;
 
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        let emp_id = self.get_emp_id();
-        let name = self.get_name();
-        let address = self.get_address();
-        let classification = Box::new(SalariedClassification::new(self.get_salary()));
-        let schedule = Box::new(MonthlySchedule);
+    use crate::classification::{
+        CommissionedClassification, HourlyClassification, SalariedClassification,
+    };
+    use crate::classification::{SalesReceipt, TimeCard};
+    use crate::dao::{EmployeeDao, HaveEmployeeDao};
+    use crate::domain::EmployeeId;
+    use crate::schedule::{BiweeklySchedule, MonthlySchedule, WeeklySchedule};
+    use crate::tx_base::{AddEmployeeTransaction, EmployeeUsecaseError};
 
-        self.exec(emp_id, name, address, classification, schedule)
+    pub trait AddSalaryEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_name(&self) -> &str;
+        fn get_address(&self) -> &str;
+        fn get_salary(&self) -> f64;
+
+        fn execute<'a>(
+            &'a self,
+        ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            let emp_id = self.get_emp_id();
+            let name = self.get_name();
+            let address = self.get_address();
+            let classification = Box::new(SalariedClassification::new(self.get_salary()));
+            let schedule = Box::new(MonthlySchedule);
+
+            self.exec(emp_id, name, address, classification, schedule)
+        }
     }
-}
-trait AddHourlyEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_name(&self) -> &str;
-    fn get_address(&self) -> &str;
-    fn get_hourly_rate(&self) -> f64;
+    pub trait AddHourlyEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_name(&self) -> &str;
+        fn get_address(&self) -> &str;
+        fn get_hourly_rate(&self) -> f64;
 
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        let emp_id = self.get_emp_id();
-        let name = self.get_name();
-        let address = self.get_address();
-        let classification = Box::new(HourlyClassification::new(self.get_hourly_rate()));
-        let schedule = Box::new(WeeklySchedule);
+        fn execute<'a>(
+            &'a self,
+        ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            let emp_id = self.get_emp_id();
+            let name = self.get_name();
+            let address = self.get_address();
+            let classification = Box::new(HourlyClassification::new(self.get_hourly_rate()));
+            let schedule = Box::new(WeeklySchedule);
 
-        self.exec(emp_id, name, address, classification, schedule)
+            self.exec(emp_id, name, address, classification, schedule)
+        }
     }
-}
-trait AddCommissionedEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_name(&self) -> &str;
-    fn get_address(&self) -> &str;
-    fn get_salary(&self) -> f64;
-    fn get_commission_rate(&self) -> f64;
+    pub trait AddCommissionedEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_name(&self) -> &str;
+        fn get_address(&self) -> &str;
+        fn get_salary(&self) -> f64;
+        fn get_commission_rate(&self) -> f64;
 
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        let emp_id = self.get_emp_id();
-        let name = self.get_name();
-        let address = self.get_address();
-        let classification = Box::new(CommissionedClassification::new(
-            self.get_salary(),
-            self.get_commission_rate(),
-        ));
-        let schedule = Box::new(BiweeklySchedule);
+        fn execute<'a>(
+            &'a self,
+        ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            let emp_id = self.get_emp_id();
+            let name = self.get_name();
+            let address = self.get_address();
+            let classification = Box::new(CommissionedClassification::new(
+                self.get_salary(),
+                self.get_commission_rate(),
+            ));
+            let schedule = Box::new(BiweeklySchedule);
 
-        self.exec(emp_id, name, address, classification, schedule)
+            self.exec(emp_id, name, address, classification, schedule)
+        }
     }
-}
 
-trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_date(&self) -> NaiveDate;
-    fn get_hours(&self) -> f64;
+    pub trait DeleteEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
 
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
-        tx_rs::with_tx(move |ctx| {
-            let emp = self
-                .dao()
-                .fetch(self.get_emp_id())
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
-            let mut binding = emp.get_classification();
-            let hourly = binding
-                .as_any_mut()
-                .downcast_mut::<HourlyClassification>()
-                .ok_or(EmployeeUsecaseError::NotHourlySalary(format!(
-                    "emp_id: {}",
-                    self.get_emp_id()
-                )))?;
-            hourly.add_timecard(TimeCard::new(self.get_date(), self.get_hours()));
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
             self.dao()
-                .update(emp)
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
-        })
+                .delete(self.get_emp_id())
+                .map_err(EmployeeUsecaseError::UnregisterEmployeeFailed)
+        }
+    }
+
+    pub trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_date(&self) -> NaiveDate;
+        fn get_hours(&self) -> f64;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
+            tx_rs::with_tx(move |ctx| {
+                let emp = self
+                    .dao()
+                    .fetch(self.get_emp_id())
+                    .run(ctx)
+                    .map_err(EmployeeUsecaseError::NotFound)?;
+                let mut binding = emp.get_classification();
+                let hourly = binding
+                    .as_any_mut()
+                    .downcast_mut::<HourlyClassification>()
+                    .ok_or(EmployeeUsecaseError::NotHourlySalary(format!(
+                        "emp_id: {}",
+                        self.get_emp_id()
+                    )))?;
+                hourly.add_timecard(TimeCard::new(self.get_date(), self.get_hours()));
+                self.dao()
+                    .update(emp)
+                    .run(ctx)
+                    .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+            })
+        }
+    }
+
+    pub trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_date(&self) -> NaiveDate;
+        fn get_amount(&self) -> f64;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
+            tx_rs::with_tx(move |ctx| {
+                let emp = self
+                    .dao()
+                    .fetch(self.get_emp_id())
+                    .run(ctx)
+                    .map_err(EmployeeUsecaseError::NotFound)?;
+                let mut binding = emp.get_classification();
+                let commissioned = binding
+                    .as_any_mut()
+                    .downcast_mut::<CommissionedClassification>()
+                    .ok_or(EmployeeUsecaseError::NotCommissionedSalary(format!(
+                        "emp_id: {}",
+                        self.get_emp_id()
+                    )))?;
+                commissioned
+                    .add_sales_receipt(SalesReceipt::new(self.get_date(), self.get_amount()));
+                self.dao()
+                    .update(emp)
+                    .run(ctx)
+                    .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+            })
+        }
     }
 }
-
-trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_date(&self) -> NaiveDate;
-    fn get_amount(&self) -> f64;
-
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
-        tx_rs::with_tx(move |ctx| {
-            let emp = self
-                .dao()
-                .fetch(self.get_emp_id())
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
-            let mut binding = emp.get_classification();
-            let commissioned = binding
-                .as_any_mut()
-                .downcast_mut::<CommissionedClassification>()
-                .ok_or(EmployeeUsecaseError::NotCommissionedSalary(format!(
-                    "emp_id: {}",
-                    self.get_emp_id()
-                )))?;
-            commissioned.add_sales_receipt(SalesReceipt::new(self.get_date(), self.get_amount()));
-            self.dao()
-                .update(emp)
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
-        })
-    }
-}
+use general_tx::*;
 
 trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     fn get_member_id(&self) -> MemberId;
