@@ -1454,7 +1454,7 @@ impl PaydayTransaction<()> for PaydayTransactionImpl {
 // Parser
 pub mod parser {
     use super::*;
-    use parsec_rs::{char, float32, keyword, spaces, string, uint32, Parser};
+    use parsec_rs::{char, float32, int32, keyword, spaces, string, uint32, Parser};
 
     #[derive(Debug, Clone, PartialEq)]
     pub enum Tran {
@@ -1560,6 +1560,253 @@ pub mod parser {
             .or(chg_no_member())
             .or(payday())
     }
+    #[cfg(test)]
+    mod test_transaction {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test_add_salary_emp() {
+            let input = r#"AddEmp 42 "Bob" "Home" S 1000.0"#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::AddSalaryEmp {
+                        emp_id: 42,
+                        name: "Bob".to_string(),
+                        address: "Home".to_string(),
+                        salary: 1000.0
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_add_hourly_emp() {
+            let input = r#"AddEmp 42 "Bob" "Home" H 1000.0"#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::AddHourlyEmp {
+                        emp_id: 42,
+                        name: "Bob".to_string(),
+                        address: "Home".to_string(),
+                        hourly_rate: 1000.0
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_add_commissioned_emp() {
+            let input = r#"AddEmp 42 "Bob" "Home" C 1000.0 0.1"#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::AddCommissionedEmp {
+                        emp_id: 42,
+                        name: "Bob".to_string(),
+                        address: "Home".to_string(),
+                        salary: 1000.0,
+                        commission_rate: 0.1
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_del_emp() {
+            let input = r#"DelEmp 42"#;
+            let result = transaction().parse(input);
+            assert_eq!(result, Ok((Tran::DelEmp { emp_id: 42 }, "")));
+        }
+        #[test]
+        fn test_time_card() {
+            let input = r#"TimeCard 42 2021-01-01 8.0"#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::TimeCard {
+                        emp_id: 42,
+                        date: NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(),
+                        hours: 8.0
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_sales_receipt() {
+            let input = r#"SalesReceipt 42 2021-01-01 1000.0"#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::SalesReceipt {
+                        emp_id: 42,
+                        date: NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(),
+                        amount: 1000.0
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_service_charge() {
+            let input = r#"ServiceCharge 42 2021-01-01 1000.0"#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ServiceCharge {
+                        member_id: 42,
+                        date: NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(),
+                        amount: 1000.0
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_chg_name() {
+            let input = r#"ChgEmp 42 Name "Bob""#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgName {
+                        emp_id: 42,
+                        name: "Bob".to_string()
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_chg_address() {
+            let input = r#"ChgEmp 42 Address "123 Wall St.""#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgAddress {
+                        emp_id: 42,
+                        address: "123 Wall St.".to_string()
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_chg_hourly() {
+            let input = r#"ChgEmp 42 Hourly 1000.0"#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgHourly {
+                        emp_id: 42,
+                        hourly_rate: 1000.0
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_chg_salaried() {
+            let input = r#"ChgEmp 42 Salaried 1000.0"#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgSalaried {
+                        emp_id: 42,
+                        salary: 1000.0
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_chg_commissioned() {
+            let input = r#"ChgEmp 42 Commissioned 1000.0 0.1"#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgCommissioned {
+                        emp_id: 42,
+                        salary: 1000.0,
+                        commission_rate: 0.1
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_chg_hold() {
+            let input = r#"ChgEmp 42 Hold"#;
+            let result = transaction().parse(input);
+            assert_eq!(result, Ok((Tran::ChgHold { emp_id: 42 }, "")));
+        }
+        #[test]
+        fn test_chg_direct() {
+            let input = r#"ChgEmp 42 Direct "mufg" "1234567""#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgDirect {
+                        emp_id: 42,
+                        bank: "mufg".to_string(),
+                        account: "1234567".to_string()
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_chg_mail() {
+            let input = r#"ChgEmp 42 Mail "bob@gmail.com""#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgMail {
+                        emp_id: 42,
+                        address: "bob@gmail.com".to_string()
+                    },
+                    ""
+                ))
+            );
+        }
+        #[test]
+        fn test_chg_member() {
+            let input = r#"ChgEmp 42 Member 7234 Dues 9.45"#;
+            let result = transaction().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgMember {
+                        emp_id: 42,
+                        member_id: 7234,
+                        dues: 9.45,
+                    },
+                    "",
+                ))
+            );
+        }
+        #[test]
+        fn test_no_member() {
+            let input = r#"ChgEmp 42 NoMember"#;
+            let result = transaction().parse(input);
+            assert_eq!(result, Ok((Tran::ChgNoMember { emp_id: 42 }, "")));
+        }
+    }
 
     fn add_salary_emp() -> impl Parser<Item = Tran> {
         let prefix = keyword("AddEmp").skip(spaces());
@@ -1580,6 +1827,30 @@ pub mod parser {
                 salary,
             })
     }
+    #[cfg(test)]
+    mod test_add_salary_emp {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"AddEmp 1 "Bob" "Home" S 1000.0"#;
+            let result = add_salary_emp().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::AddSalaryEmp {
+                        emp_id: 1,
+                        name: "Bob".to_string(),
+                        address: "Home".to_string(),
+                        salary: 1000.0
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn add_hourly_emp() -> impl Parser<Item = Tran> {
         let prefix = keyword("AddEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
@@ -1601,6 +1872,30 @@ pub mod parser {
                 },
             )
     }
+    #[cfg(test)]
+    mod test_add_hourly_emp {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"AddEmp 1 "Bob" "Home" H 1000.0"#;
+            let result = add_hourly_emp().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::AddHourlyEmp {
+                        emp_id: 1,
+                        name: "Bob".to_string(),
+                        address: "Home".to_string(),
+                        hourly_rate: 1000.0
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn add_commissioned_emp() -> impl Parser<Item = Tran> {
         let prefix = keyword("AddEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
@@ -1625,21 +1920,75 @@ pub mod parser {
                 }
             })
     }
+    #[cfg(test)]
+    mod test_add_commissioned_emp {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"AddEmp 1 "Bob" "Home" C 1000.0 0.1"#;
+            let result = add_commissioned_emp().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::AddCommissionedEmp {
+                        emp_id: 1,
+                        name: "Bob".to_string(),
+                        address: "Home".to_string(),
+                        salary: 1000.0,
+                        commission_rate: 0.1
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn del_emp() -> impl Parser<Item = Tran> {
         let prefix = keyword("DelEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
 
         prefix.skip(emp_id).map(|emp_id| Tran::DelEmp { emp_id })
     }
+    #[cfg(test)]
+    mod test_del_emp {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"DelEmp 1"#;
+            let result = del_emp().parse(input);
+            assert_eq!(result, Ok((Tran::DelEmp { emp_id: 1 }, "")));
+        }
+    }
+
     fn date() -> impl Parser<Item = NaiveDate> {
-        let year = uint32().skip(char('-'));
-        let month = uint32().skip(char('-'));
+        let year = int32().with(char('-'));
+        let month = uint32().with(char('-'));
         let day = uint32();
 
-        year.join(month).join(day).map(|((y, m), d)| {
-            NaiveDate::from_ymd_opt(y as i32, m as u32, d as u32).expect("naivedate")
-        })
+        year.join(month)
+            .join(day)
+            .map(|((y, m), d)| NaiveDate::from_ymd_opt(y as i32, m as u32, d as u32).expect("date"))
     }
+    #[cfg(test)]
+    mod test_date {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = "2021-01-01";
+            let result = date().parse(input);
+            assert_eq!(
+                result,
+                Ok((NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(), ""))
+            );
+        }
+    }
+
     fn time_card() -> impl Parser<Item = Tran> {
         let prefix = keyword("TimeCard").skip(spaces());
         let emp_id = uint32().with(spaces());
@@ -1656,6 +2005,29 @@ pub mod parser {
                 hours,
             })
     }
+    #[cfg(test)]
+    mod test_time_card {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"TimeCard 1 2021-01-01 8.0"#;
+            let result = time_card().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::TimeCard {
+                        emp_id: 1,
+                        date: NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(),
+                        hours: 8.0
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn sales_receipt() -> impl Parser<Item = Tran> {
         let prefix = keyword("SalesReceipt").skip(spaces());
         let emp_id = uint32().with(spaces());
@@ -1672,6 +2044,29 @@ pub mod parser {
                 amount,
             })
     }
+    #[cfg(test)]
+    mod test_sales_receipt {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"SalesReceipt 1 2021-01-01 1000.0"#;
+            let result = sales_receipt().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::SalesReceipt {
+                        emp_id: 1,
+                        date: NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(),
+                        amount: 1000.0
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn service_charge() -> impl Parser<Item = Tran> {
         let prefix = keyword("ServiceCharge").skip(spaces());
         let member_id = uint32().with(spaces());
@@ -1688,21 +2083,66 @@ pub mod parser {
                 amount,
             })
     }
+    #[cfg(test)]
+    mod test_service_charge {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"ServiceCharge 1 2021-01-01 1000.0"#;
+            let result = service_charge().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ServiceCharge {
+                        member_id: 1,
+                        date: NaiveDate::from_ymd_opt(2021, 1, 1).unwrap(),
+                        amount: 1000.0
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn chg_name() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let name = keyword("Name").with(spaces()).skip(string()).with(spaces());
+        let name = keyword("Name").skip(spaces()).skip(string()).with(spaces());
 
         prefix
             .skip(emp_id)
             .join(name)
             .map(|(emp_id, name)| Tran::ChgName { emp_id, name })
     }
+    #[cfg(test)]
+    mod test_chg_name {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"ChgEmp 1 Name "Bob""#;
+            let result = chg_name().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgName {
+                        emp_id: 1,
+                        name: "Bob".to_string()
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn chg_address() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
         let address = keyword("Address")
-            .with(spaces())
+            .skip(spaces())
             .skip(string())
             .with(spaces());
 
@@ -1711,10 +2151,35 @@ pub mod parser {
             .join(address)
             .map(|(emp_id, address)| Tran::ChgAddress { emp_id, address })
     }
+    #[cfg(test)]
+    mod test_chg_address {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"ChgEmp 1 Address "123 Main St""#;
+            let result = chg_address().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgAddress {
+                        emp_id: 1,
+                        address: "123 Main St".to_string()
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn chg_hourly() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let hourly_rate = keyword("Hourly").skip(float32()).with(spaces());
+        let hourly_rate = keyword("Hourly")
+            .skip(spaces())
+            .skip(float32())
+            .with(spaces());
 
         prefix
             .skip(emp_id)
@@ -1724,11 +2189,33 @@ pub mod parser {
                 hourly_rate,
             })
     }
+    #[cfg(test)]
+    mod test_chg_hourly {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"ChgEmp 1 Hourly 13.78"#;
+            let result = chg_hourly().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgHourly {
+                        emp_id: 1,
+                        hourly_rate: 13.78
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn chg_salaried() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
         let salaried = keyword("Salaried")
-            .with(spaces())
+            .skip(spaces())
             .skip(float32())
             .with(spaces());
 
@@ -1737,11 +2224,33 @@ pub mod parser {
             .join(salaried)
             .map(|(emp_id, salary)| Tran::ChgSalaried { emp_id, salary })
     }
+    #[cfg(test)]
+    mod test_chg_salaried {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"ChgEmp 1 Salaried 1023.456"#;
+            let result = chg_salaried().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgSalaried {
+                        emp_id: 1,
+                        salary: 1023.456
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn chg_commissioned() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
         let salary = keyword("Commissioned")
-            .with(spaces())
+            .skip(spaces())
             .skip(float32())
             .with(spaces());
         let commission_rate = float32().with(spaces());
@@ -1754,21 +2263,57 @@ pub mod parser {
             },
         )
     }
+    #[cfg(test)]
+    mod test_chg_commissioned {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"ChgEmp 1 Commissioned 1018.91 0.19"#;
+            let result = chg_commissioned().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgCommissioned {
+                        emp_id: 1,
+                        salary: 1018.91,
+                        commission_rate: 0.19
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn chg_hold() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let hold = keyword("Hold").with(spaces());
+        let hold = keyword("Hold").skip(spaces());
 
         prefix
             .skip(emp_id)
             .with(hold)
             .map(|emp_id| Tran::ChgHold { emp_id })
     }
+    #[cfg(test)]
+    mod test_chg_hold {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"ChgEmp 1 Hold"#;
+            let result = chg_hold().parse(input);
+            assert_eq!(result, Ok((Tran::ChgHold { emp_id: 1 }, "")));
+        }
+    }
+
     fn chg_direct() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
         let bank = keyword("Direct")
-            .with(spaces())
+            .skip(spaces())
             .skip(string())
             .with(spaces());
         let account = string().with(spaces());
@@ -1783,22 +2328,70 @@ pub mod parser {
                 account,
             })
     }
+    #[cfg(test)]
+    mod test_chg_direct {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"ChgEmp 1 Direct "Bank" "Account""#;
+            let result = chg_direct().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgDirect {
+                        emp_id: 1,
+                        bank: "Bank".to_string(),
+                        account: "Account".to_string()
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn chg_mail() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let address = keyword("Mail").with(spaces()).skip(string()).with(spaces());
+        let address = keyword("Mail").skip(spaces()).skip(string()).with(spaces());
 
         prefix
             .skip(emp_id)
             .join(address)
             .map(|(emp_id, address)| Tran::ChgMail { emp_id, address })
     }
+    #[cfg(test)]
+    mod test_chg_mail {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"ChgEmp 1 Mail "bob@gmail.com""#;
+            let result = chg_mail().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgMail {
+                        emp_id: 1,
+                        address: "bob@gmail.com".to_string()
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn chg_member() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let member_id = keyword("Member").skip(uint32()).with(spaces());
+        let member_id = keyword("Member")
+            .skip(spaces())
+            .skip(uint32())
+            .with(spaces());
         let dues = keyword("Dues")
-            .with(spaces())
+            .skip(spaces())
             .skip(float32())
             .with(spaces());
 
@@ -1812,21 +2405,77 @@ pub mod parser {
                 dues,
             })
     }
+    #[cfg(test)]
+    mod test_chg_member {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"ChgEmp 1 Member 2 Dues 100.0"#;
+            let result = chg_member().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::ChgMember {
+                        emp_id: 1,
+                        member_id: 2,
+                        dues: 100.0
+                    },
+                    ""
+                ))
+            );
+        }
+    }
+
     fn chg_no_member() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let no_member = keyword("NoMember").with(spaces());
+        let no_member = keyword("NoMember").skip(spaces());
 
         prefix
             .skip(emp_id)
             .with(no_member)
             .map(|emp_id| Tran::ChgNoMember { emp_id })
     }
+    #[cfg(test)]
+    mod test_chg_no_member {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"ChgEmp 1 NoMember"#;
+            let result = chg_no_member().parse(input);
+            assert_eq!(result, Ok((Tran::ChgNoMember { emp_id: 1 }, "")));
+        }
+    }
+
     fn payday() -> impl Parser<Item = Tran> {
         let prefix = keyword("Payday").skip(spaces());
         let date = date().with(spaces());
 
         prefix.skip(date).map(|date| Tran::Payday { date })
+    }
+    #[cfg(test)]
+    mod test_payday {
+        use super::*;
+        use parsec_rs::Parser;
+
+        #[test]
+        fn test() {
+            let input = r#"Payday 2021-01-01"#;
+            let result = payday().parse(input);
+            assert_eq!(
+                result,
+                Ok((
+                    Tran::Payday {
+                        date: NaiveDate::from_ymd_opt(2021, 1, 1).unwrap()
+                    },
+                    ""
+                ))
+            );
+        }
     }
 }
 
