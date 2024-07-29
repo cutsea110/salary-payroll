@@ -1451,6 +1451,385 @@ impl PaydayTransaction<()> for PaydayTransactionImpl {
     }
 }
 
+// Parser
+pub mod parser {
+    use super::*;
+    use parsec_rs::{char, float32, keyword, spaces, string, uint32, Parser};
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum Tran {
+        AddSalaryEmp {
+            emp_id: EmployeeId,
+            name: String,
+            address: String,
+            salary: f32,
+        },
+        AddHourlyEmp {
+            emp_id: EmployeeId,
+            name: String,
+            address: String,
+            hourly_rate: f32,
+        },
+        AddCommissionedEmp {
+            emp_id: EmployeeId,
+            name: String,
+            address: String,
+            salary: f32,
+            commission_rate: f32,
+        },
+        DelEmp {
+            emp_id: EmployeeId,
+        },
+        TimeCard {
+            emp_id: EmployeeId,
+            date: NaiveDate,
+            hours: f32,
+        },
+        SalesReceipt {
+            emp_id: EmployeeId,
+            date: NaiveDate,
+            amount: f32,
+        },
+        ServiceCharge {
+            member_id: EmployeeId,
+            date: NaiveDate,
+            amount: f32,
+        },
+        ChgName {
+            emp_id: EmployeeId,
+            name: String,
+        },
+        ChgAddress {
+            emp_id: EmployeeId,
+            address: String,
+        },
+        ChgHourly {
+            emp_id: EmployeeId,
+            hourly_rate: f32,
+        },
+        ChgSalaried {
+            emp_id: EmployeeId,
+            salary: f32,
+        },
+        ChgCommissioned {
+            emp_id: EmployeeId,
+            salary: f32,
+            commission_rate: f32,
+        },
+        ChgHold {
+            emp_id: EmployeeId,
+        },
+        ChgDirect {
+            emp_id: EmployeeId,
+            bank: String,
+            account: String,
+        },
+        ChgMail {
+            emp_id: EmployeeId,
+            address: String,
+        },
+        ChgMember {
+            emp_id: EmployeeId,
+            member_id: EmployeeId,
+            dues: f32,
+        },
+        ChgNoMember {
+            emp_id: EmployeeId,
+        },
+        Payday {
+            date: NaiveDate,
+        },
+    }
+    pub fn transaction() -> impl Parser<Item = Tran> {
+        add_salary_emp()
+            .or(add_hourly_emp())
+            .or(add_commissioned_emp())
+            .or(del_emp())
+            .or(time_card())
+            .or(sales_receipt())
+            .or(service_charge())
+            .or(chg_name())
+            .or(chg_address())
+            .or(chg_hourly())
+            .or(chg_salaried())
+            .or(chg_commissioned())
+            .or(chg_hold())
+            .or(chg_direct())
+            .or(chg_mail())
+            .or(chg_member())
+            .or(chg_no_member())
+            .or(payday())
+    }
+
+    fn add_salary_emp() -> impl Parser<Item = Tran> {
+        let prefix = keyword("AddEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let name = string().with(spaces());
+        let address = string().with(spaces());
+        let monthly_rate = char('S').skip(spaces()).skip(float32()).with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(name)
+            .join(address)
+            .join(monthly_rate)
+            .map(|(((emp_id, name), address), salary)| Tran::AddSalaryEmp {
+                emp_id,
+                name,
+                address,
+                salary,
+            })
+    }
+    fn add_hourly_emp() -> impl Parser<Item = Tran> {
+        let prefix = keyword("AddEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let name = string().with(spaces());
+        let address = string().with(spaces());
+        let hourly_rate = char('H').skip(spaces()).skip(float32()).with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(name)
+            .join(address)
+            .join(hourly_rate)
+            .map(
+                |(((emp_id, name), address), hourly_rate)| Tran::AddHourlyEmp {
+                    emp_id,
+                    name,
+                    address,
+                    hourly_rate,
+                },
+            )
+    }
+    fn add_commissioned_emp() -> impl Parser<Item = Tran> {
+        let prefix = keyword("AddEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let name = string().with(spaces());
+        let address = string().with(spaces());
+        let salary = char('C').skip(spaces()).skip(float32()).with(spaces());
+        let commission_rate = float32().with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(name)
+            .join(address)
+            .join(salary)
+            .join(commission_rate)
+            .map(|((((emp_id, name), address), salary), commission_rate)| {
+                Tran::AddCommissionedEmp {
+                    emp_id,
+                    name,
+                    address,
+                    salary,
+                    commission_rate,
+                }
+            })
+    }
+    fn del_emp() -> impl Parser<Item = Tran> {
+        let prefix = keyword("DelEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+
+        prefix.skip(emp_id).map(|emp_id| Tran::DelEmp { emp_id })
+    }
+    fn date() -> impl Parser<Item = NaiveDate> {
+        let year = uint32().skip(char('-'));
+        let month = uint32().skip(char('-'));
+        let day = uint32();
+
+        year.join(month).join(day).map(|((y, m), d)| {
+            NaiveDate::from_ymd_opt(y as i32, m as u32, d as u32).expect("naivedate")
+        })
+    }
+    fn time_card() -> impl Parser<Item = Tran> {
+        let prefix = keyword("TimeCard").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let date = date().with(spaces());
+        let hours = float32().with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(date)
+            .join(hours)
+            .map(|((emp_id, date), hours)| Tran::TimeCard {
+                emp_id,
+                date,
+                hours,
+            })
+    }
+    fn sales_receipt() -> impl Parser<Item = Tran> {
+        let prefix = keyword("SalesReceipt").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let date = date().with(spaces());
+        let amount = float32().with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(date)
+            .join(amount)
+            .map(|((emp_id, date), amount)| Tran::SalesReceipt {
+                emp_id,
+                date,
+                amount,
+            })
+    }
+    fn service_charge() -> impl Parser<Item = Tran> {
+        let prefix = keyword("ServiceCharge").skip(spaces());
+        let member_id = uint32().with(spaces());
+        let date = date().with(spaces());
+        let amount = float32().with(spaces());
+
+        prefix
+            .skip(member_id)
+            .join(date)
+            .join(amount)
+            .map(|((member_id, date), amount)| Tran::ServiceCharge {
+                member_id,
+                date,
+                amount,
+            })
+    }
+    fn chg_name() -> impl Parser<Item = Tran> {
+        let prefix = keyword("ChgEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let name = keyword("Name").with(spaces()).skip(string()).with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(name)
+            .map(|(emp_id, name)| Tran::ChgName { emp_id, name })
+    }
+    fn chg_address() -> impl Parser<Item = Tran> {
+        let prefix = keyword("ChgEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let address = keyword("Address")
+            .with(spaces())
+            .skip(string())
+            .with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(address)
+            .map(|(emp_id, address)| Tran::ChgAddress { emp_id, address })
+    }
+    fn chg_hourly() -> impl Parser<Item = Tran> {
+        let prefix = keyword("ChgEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let hourly_rate = keyword("Hourly").skip(float32()).with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(hourly_rate)
+            .map(|(emp_id, hourly_rate)| Tran::ChgHourly {
+                emp_id,
+                hourly_rate,
+            })
+    }
+    fn chg_salaried() -> impl Parser<Item = Tran> {
+        let prefix = keyword("ChgEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let salaried = keyword("Salaried")
+            .with(spaces())
+            .skip(float32())
+            .with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(salaried)
+            .map(|(emp_id, salary)| Tran::ChgSalaried { emp_id, salary })
+    }
+    fn chg_commissioned() -> impl Parser<Item = Tran> {
+        let prefix = keyword("ChgEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let salary = keyword("Commissioned")
+            .with(spaces())
+            .skip(float32())
+            .with(spaces());
+        let commission_rate = float32().with(spaces());
+
+        prefix.skip(emp_id).join(salary).join(commission_rate).map(
+            |((emp_id, salary), commission_rate)| Tran::ChgCommissioned {
+                emp_id,
+                salary,
+                commission_rate,
+            },
+        )
+    }
+    fn chg_hold() -> impl Parser<Item = Tran> {
+        let prefix = keyword("ChgEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let hold = keyword("Hold").with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .with(hold)
+            .map(|emp_id| Tran::ChgHold { emp_id })
+    }
+    fn chg_direct() -> impl Parser<Item = Tran> {
+        let prefix = keyword("ChgEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let bank = keyword("Direct")
+            .with(spaces())
+            .skip(string())
+            .with(spaces());
+        let account = string().with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(bank)
+            .join(account)
+            .map(|((emp_id, bank), account)| Tran::ChgDirect {
+                emp_id,
+                bank,
+                account,
+            })
+    }
+    fn chg_mail() -> impl Parser<Item = Tran> {
+        let prefix = keyword("ChgEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let address = keyword("Mail").with(spaces()).skip(string()).with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(address)
+            .map(|(emp_id, address)| Tran::ChgMail { emp_id, address })
+    }
+    fn chg_member() -> impl Parser<Item = Tran> {
+        let prefix = keyword("ChgEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let member_id = keyword("Member").skip(uint32()).with(spaces());
+        let dues = keyword("Dues")
+            .with(spaces())
+            .skip(float32())
+            .with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .join(member_id)
+            .join(dues)
+            .map(|((emp_id, member_id), dues)| Tran::ChgMember {
+                emp_id,
+                member_id,
+                dues,
+            })
+    }
+    fn chg_no_member() -> impl Parser<Item = Tran> {
+        let prefix = keyword("ChgEmp").skip(spaces());
+        let emp_id = uint32().with(spaces());
+        let no_member = keyword("NoMember").with(spaces());
+
+        prefix
+            .skip(emp_id)
+            .with(no_member)
+            .map(|emp_id| Tran::ChgNoMember { emp_id })
+    }
+    fn payday() -> impl Parser<Item = Tran> {
+        let prefix = keyword("Payday").skip(spaces());
+        let date = date().with(spaces());
+
+        prefix.skip(date).map(|date| Tran::Payday { date })
+    }
+}
+
 fn main() {
     let db = MockDb {
         employees: Rc::new(RefCell::new(HashMap::new())),

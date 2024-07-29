@@ -128,6 +128,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
+name = "parsec-rs"
+version = "0.1.0"
+source = "git+https://github.com/cutsea110/fragments.git?branch=main#293e62934b636c87aac37003c867d4d20cc155cd"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -151,6 +159,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "dyn-clone",
+ "parsec-rs",
  "thiserror",
  "tx-rs",
 ]
@@ -209,7 +218,7 @@ dependencies = [
 [[package]]
 name = "tx-rs"
 version = "0.1.0"
-source = "git+https://github.com/cutsea110/fragments.git?branch=main#3aa620638fc3a8db3bb06ee63489b5410028b0ba"
+source = "git+https://github.com/cutsea110/fragments.git?branch=main#293e62934b636c87aac37003c867d4d20cc155cd"
 
 [[package]]
 name = "unicode-ident"

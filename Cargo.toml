@@ -7,4 +7,5 @@ edition = "2021"
 chrono = { version = "0.4.38", features = ["serde"] }
 dyn-clone = "1.0.17"
 thiserror = "1.0.63"
+parsec-rs = { git = "https://github.com/cutsea110/fragments.git", branch = "main" }
 tx-rs = { git = "https://github.com/cutsea110/fragments.git", branch = "main" }
