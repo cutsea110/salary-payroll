@@ -199,6 +199,139 @@ mod dao {
 }
 use dao::*;
 
+mod classification {
+    use chrono::NaiveDate;
+    use std::any::Any;
+
+    use crate::domain::{PayCheck, PaymentClassification};
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct SalariedClassification {
+        salary: f64,
+    }
+    impl PaymentClassification for SalariedClassification {
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
+        fn calculate_pay(&self, _pc: &PayCheck) -> f64 {
+            self.salary
+        }
+    }
+    impl SalariedClassification {
+        pub fn new(salary: f64) -> Self {
+            Self { salary }
+        }
+    }
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct HourlyClassification {
+        hourly_rate: f64,
+        timecards: Vec<TimeCard>,
+    }
+    impl PaymentClassification for HourlyClassification {
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
+        fn calculate_pay(&self, pc: &PayCheck) -> f64 {
+            let pay_period = pc.get_pay_period();
+            let mut total_pay = 0.0;
+            for tc in self.timecards.iter() {
+                if pay_period.contains(&tc.get_date()) {
+                    total_pay += self.calculate_pay_for_timecard(tc);
+                }
+            }
+            total_pay
+        }
+    }
+    impl HourlyClassification {
+        pub fn new(hourly_rate: f64) -> Self {
+            Self {
+                hourly_rate,
+                timecards: vec![],
+            }
+        }
+        pub fn add_timecard(&mut self, tc: TimeCard) {
+            self.timecards.push(tc);
+        }
+        pub fn calculate_pay_for_timecard(&self, tc: &TimeCard) -> f64 {
+            let hours = tc.get_hours();
+            let overtime = (hours - 8.0).max(0.0);
+            let straight_time = hours - overtime;
+            straight_time * self.hourly_rate + overtime * self.hourly_rate * 1.5
+        }
+    }
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct CommissionedClassification {
+        salary: f64,
+        commission_rate: f64,
+        sales_receipts: Vec<SalesReceipt>,
+    }
+    impl PaymentClassification for CommissionedClassification {
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
+        fn calculate_pay(&self, pc: &PayCheck) -> f64 {
+            let mut total_pay = 0.0;
+            let pay_period = pc.get_pay_period();
+            for sr in self.sales_receipts.iter() {
+                if pay_period.contains(&sr.get_date()) {
+                    total_pay += self.calculate_pay_for_sales_receipt(sr);
+                }
+            }
+            total_pay
+        }
+    }
+    impl CommissionedClassification {
+        pub fn new(salary: f64, commission_rate: f64) -> Self {
+            Self {
+                salary,
+                commission_rate,
+                sales_receipts: vec![],
+            }
+        }
+        pub fn add_sales_receipt(&mut self, sr: SalesReceipt) {
+            self.sales_receipts.push(sr);
+        }
+        pub fn calculate_pay_for_sales_receipt(&self, sr: &SalesReceipt) -> f64 {
+            self.commission_rate * sr.get_amount()
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct TimeCard {
+        date: NaiveDate,
+        hours: f64,
+    }
+    impl TimeCard {
+        pub fn new(date: NaiveDate, hours: f64) -> Self {
+            Self { date, hours }
+        }
+        pub fn get_date(&self) -> NaiveDate {
+            self.date
+        }
+        pub fn get_hours(&self) -> f64 {
+            self.hours
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct SalesReceipt {
+        date: NaiveDate,
+        amount: f64,
+    }
+    impl SalesReceipt {
+        pub fn new(date: NaiveDate, amount: f64) -> Self {
+            Self { date, amount }
+        }
+        pub fn get_date(&self) -> NaiveDate {
+            self.date
+        }
+        pub fn get_amount(&self) -> f64 {
+            self.amount
+        }
+    }
+}
+use classification::*;
+
 #[derive(Debug, Clone, Eq, PartialEq, Error)]
 enum EmployeeUsecaseError {
     #[error("register employee failed: {0}")]
@@ -267,9 +400,7 @@ trait AddSalaryEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
         let emp_id = self.get_emp_id();
         let name = self.get_name();
         let address = self.get_address();
-        let classification = Box::new(SalariedClassification {
-            salary: self.get_salary(),
-        });
+        let classification = Box::new(SalariedClassification::new(self.get_salary()));
         let schedule = Box::new(MonthlySchedule);
 
         self.exec(emp_id, name, address, classification, schedule)
@@ -288,10 +419,7 @@ trait AddHourlyEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
         let emp_id = self.get_emp_id();
         let name = self.get_name();
         let address = self.get_address();
-        let classification = Box::new(HourlyClassification {
-            hourly_rate: self.get_hourly_rate(),
-            timecards: vec![],
-        });
+        let classification = Box::new(HourlyClassification::new(self.get_hourly_rate()));
         let schedule = Box::new(WeeklySchedule);
 
         self.exec(emp_id, name, address, classification, schedule)
@@ -311,11 +439,10 @@ trait AddCommissionedEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
         let emp_id = self.get_emp_id();
         let name = self.get_name();
         let address = self.get_address();
-        let classification = Box::new(CommissionedClassification {
-            salary: self.get_salary(),
-            commission_rate: self.get_commission_rate(),
-            sales_receipts: vec![],
-        });
+        let classification = Box::new(CommissionedClassification::new(
+            self.get_salary(),
+            self.get_commission_rate(),
+        ));
         let schedule = Box::new(BiweeklySchedule);
 
         self.exec(emp_id, name, address, classification, schedule)
@@ -355,9 +482,7 @@ trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                     "emp_id: {}",
                     self.get_emp_id()
                 )))?;
-            hourly
-                .timecards
-                .push(TimeCard::new(self.get_date(), self.get_hours()));
+            hourly.add_timecard(TimeCard::new(self.get_date(), self.get_hours()));
             self.dao()
                 .update(emp)
                 .run(ctx)
@@ -386,9 +511,7 @@ trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                     "emp_id: {}",
                     self.get_emp_id()
                 )))?;
-            commissioned
-                .sales_receipts
-                .push(SalesReceipt::new(self.get_date(), self.get_amount()));
+            commissioned.add_sales_receipt(SalesReceipt::new(self.get_date(), self.get_amount()));
             self.dao()
                 .update(emp)
                 .run(ctx)
@@ -518,9 +641,7 @@ trait ChangeSalariedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
     {
         self.exec_classification(
             self.get_emp_id(),
-            Box::new(SalariedClassification {
-                salary: self.get_salary(),
-            }),
+            Box::new(SalariedClassification::new(self.get_salary())),
             Box::new(MonthlySchedule),
         )
     }
@@ -535,10 +656,7 @@ trait ChangeHourlyTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
     {
         self.exec_classification(
             self.get_emp_id(),
-            Box::new(HourlyClassification {
-                hourly_rate: self.get_hourly_rate(),
-                timecards: vec![],
-            }),
+            Box::new(HourlyClassification::new(self.get_hourly_rate())),
             Box::new(WeeklySchedule),
         )
     }
@@ -554,11 +672,10 @@ trait ChangeCommissionedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
     {
         self.exec_classification(
             self.get_emp_id(),
-            Box::new(CommissionedClassification {
-                salary: self.get_salary(),
-                commission_rate: self.get_commission_rate(),
-                sales_receipts: vec![],
-            }),
+            Box::new(CommissionedClassification::new(
+                self.get_salary(),
+                self.get_commission_rate(),
+            )),
             Box::new(BiweeklySchedule),
         )
     }
@@ -732,73 +849,6 @@ trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-struct SalariedClassification {
-    salary: f64,
-}
-impl PaymentClassification for SalariedClassification {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-    fn calculate_pay(&self, _pc: &PayCheck) -> f64 {
-        self.salary
-    }
-}
-#[derive(Debug, Clone, PartialEq)]
-struct HourlyClassification {
-    hourly_rate: f64,
-    timecards: Vec<TimeCard>,
-}
-impl PaymentClassification for HourlyClassification {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-    fn calculate_pay(&self, pc: &PayCheck) -> f64 {
-        let pay_period = pc.get_pay_period();
-        let mut total_pay = 0.0;
-        for tc in self.timecards.iter() {
-            if pay_period.contains(&tc.get_date()) {
-                total_pay += self.calculate_pay_for_timecard(tc);
-            }
-        }
-        total_pay
-    }
-}
-impl HourlyClassification {
-    fn calculate_pay_for_timecard(&self, tc: &TimeCard) -> f64 {
-        let hours = tc.get_hours();
-        let overtime = (hours - 8.0).max(0.0);
-        let straight_time = hours - overtime;
-        straight_time * self.hourly_rate + overtime * self.hourly_rate * 1.5
-    }
-}
-#[derive(Debug, Clone, PartialEq)]
-struct CommissionedClassification {
-    salary: f64,
-    commission_rate: f64,
-    sales_receipts: Vec<SalesReceipt>,
-}
-impl PaymentClassification for CommissionedClassification {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-    fn calculate_pay(&self, pc: &PayCheck) -> f64 {
-        let mut total_pay = 0.0;
-        let pay_period = pc.get_pay_period();
-        for sr in self.sales_receipts.iter() {
-            if pay_period.contains(&sr.get_date()) {
-                total_pay += self.calculate_pay_for_sales_receipt(sr);
-            }
-        }
-        total_pay
-    }
-}
-impl CommissionedClassification {
-    fn calculate_pay_for_sales_receipt(&self, sr: &SalesReceipt) -> f64 {
-        self.commission_rate * sr.get_amount()
-    }
-}
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct MonthlySchedule;
 impl PaymentSchedule for MonthlySchedule {
@@ -912,40 +962,6 @@ impl Affiliation for NoAffiliation {
     }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct TimeCard {
-    date: NaiveDate,
-    hours: f64,
-}
-impl TimeCard {
-    fn new(date: NaiveDate, hours: f64) -> Self {
-        Self { date, hours }
-    }
-    fn get_date(&self) -> NaiveDate {
-        self.date
-    }
-    fn get_hours(&self) -> f64 {
-        self.hours
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct SalesReceipt {
-    date: NaiveDate,
-    amount: f64,
-}
-impl SalesReceipt {
-    fn new(date: NaiveDate, amount: f64) -> Self {
-        Self { date, amount }
-    }
-    fn get_date(&self) -> NaiveDate {
-        self.date
-    }
-    fn get_amount(&self) -> f64 {
-        self.amount
     }
 }
 
