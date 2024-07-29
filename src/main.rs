@@ -377,6 +377,51 @@ mod schedule {
 }
 use schedule::*;
 
+mod method {
+    use crate::domain::{PayCheck, PaymentMethod};
+
+    #[derive(Debug, Clone, Eq, PartialEq)]
+    pub struct HoldMethod;
+    impl PaymentMethod for HoldMethod {
+        fn pay(&self, pc: &PayCheck) {
+            // concrete implementation
+            println!("HoldMethod: {:?}", pc);
+        }
+    }
+    #[derive(Debug, Clone, Eq, PartialEq)]
+    pub struct MailMethod {
+        address: String,
+    }
+    impl PaymentMethod for MailMethod {
+        fn pay(&self, pc: &PayCheck) {
+            // concrete implementation
+            println!("MailMethod for {}: {:?}", self.address, pc);
+        }
+    }
+    impl MailMethod {
+        pub fn new(address: String) -> Self {
+            Self { address }
+        }
+    }
+    #[derive(Debug, Clone, Eq, PartialEq)]
+    pub struct DirectMethod {
+        bank: String,
+        account: String,
+    }
+    impl PaymentMethod for DirectMethod {
+        fn pay(&self, pc: &PayCheck) {
+            // concrete implementation
+            println!("DirectMethod to {}{}: {:?}", self.bank, self.account, pc);
+        }
+    }
+    impl DirectMethod {
+        pub fn new(bank: String, account: String) -> Self {
+            Self { bank, account }
+        }
+    }
+}
+use method::*;
+
 #[derive(Debug, Clone, Eq, PartialEq, Error)]
 enum EmployeeUsecaseError {
     #[error("register employee failed: {0}")]
@@ -755,10 +800,10 @@ trait ChangeDirectTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
     {
         self.exec_method(
             self.get_emp_id(),
-            Box::new(DirectMethod {
-                bank: self.get_bank().to_string(),
-                account: self.get_account().to_string(),
-            }),
+            Box::new(DirectMethod::new(
+                self.get_bank().to_string(),
+                self.get_account().to_string(),
+            )),
         )
     }
 }
@@ -772,9 +817,7 @@ trait ChangeMailTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
     {
         self.exec_method(
             self.get_emp_id(),
-            Box::new(MailMethod {
-                address: self.get_address().to_string(),
-            }),
+            Box::new(MailMethod::new(self.get_address().to_string())),
         )
     }
 }
@@ -891,36 +934,6 @@ trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> {
             }
             Ok(())
         })
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct HoldMethod;
-impl PaymentMethod for HoldMethod {
-    fn pay(&self, pc: &PayCheck) {
-        // concrete implementation
-        println!("HoldMethod: {:?}", pc);
-    }
-}
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct MailMethod {
-    address: String,
-}
-impl PaymentMethod for MailMethod {
-    fn pay(&self, pc: &PayCheck) {
-        // concrete implementation
-        println!("MailMethod for {}: {:?}", self.address, pc);
-    }
-}
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct DirectMethod {
-    bank: String,
-    account: String,
-}
-impl PaymentMethod for DirectMethod {
-    fn pay(&self, pc: &PayCheck) {
-        // concrete implementation
-        println!("DirectMethod to {}{}: {:?}", self.bank, self.account, pc);
     }
 }
 
