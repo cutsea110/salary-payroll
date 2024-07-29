@@ -100,6 +100,7 @@ trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
 }
 // blanket implementation
 impl<T, Ctx> AddEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> {}
+
 trait AddSalaryEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
     fn get_name(&self) -> &str;
@@ -305,6 +306,7 @@ trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
 }
 // blanket implementation
 impl<Ctx, T> ChangeEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> {}
+
 trait ChangeNameTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
     fn get_name(&self) -> &str;
