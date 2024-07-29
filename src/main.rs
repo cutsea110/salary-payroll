@@ -1,6 +1,6 @@
-use chrono::{Datelike, NaiveDate, Weekday};
+use chrono::NaiveDate;
 use core::fmt::Debug;
-use std::{any::Any, cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use thiserror::Error;
 use tx_rs::Tx;
 
@@ -422,6 +422,93 @@ mod method {
 }
 use method::*;
 
+mod affiliation {
+    use chrono::{Datelike, NaiveDate, Weekday};
+    use std::any::Any;
+
+    use crate::domain::{Affiliation, MemberId, PayCheck};
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct UnionAffiliation {
+        member_id: MemberId,
+        dues: f64,
+
+        service_charges: Vec<ServiceCharge>,
+    }
+    impl UnionAffiliation {
+        pub fn new(member_id: MemberId, dues: f64) -> Self {
+            Self {
+                member_id,
+                dues,
+                service_charges: vec![],
+            }
+        }
+        pub fn get_member_id(&self) -> MemberId {
+            self.member_id
+        }
+        pub fn get_dues(&self) -> f64 {
+            self.dues
+        }
+        pub fn add_service_charge(&mut self, sc: ServiceCharge) {
+            self.service_charges.push(sc);
+        }
+    }
+    impl Affiliation for UnionAffiliation {
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
+        fn calculate_deductions(&self, pc: &PayCheck) -> f64 {
+            let mut total_deductions = 0.0;
+            let pay_period = pc.get_pay_period();
+            for d in pc.get_pay_period().start().iter_days() {
+                if d > *pay_period.end() {
+                    break;
+                }
+                if d.weekday() == Weekday::Fri {
+                    total_deductions += self.get_dues();
+                }
+            }
+            for sc in self.service_charges.iter() {
+                if pay_period.contains(&sc.get_date()) {
+                    total_deductions += sc.get_amount();
+                }
+            }
+            total_deductions
+        }
+    }
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct NoAffiliation;
+    impl Affiliation for NoAffiliation {
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct ServiceCharge {
+        date: NaiveDate,
+        amount: f64,
+    }
+    impl ServiceCharge {
+        pub fn new(date: NaiveDate, amount: f64) -> Self {
+            Self { date, amount }
+        }
+        pub fn get_date(&self) -> NaiveDate {
+            self.date
+        }
+        pub fn get_amount(&self) -> f64 {
+            self.amount
+        }
+    }
+}
+use affiliation::*;
+
 #[derive(Debug, Clone, Eq, PartialEq, Error)]
 enum EmployeeUsecaseError {
     #[error("register employee failed: {0}")]
@@ -635,9 +722,7 @@ trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                     "emp_id: {0}",
                     emp_id,
                 )))?;
-            affiliation
-                .service_charges
-                .push(ServiceCharge::new(self.get_date(), self.get_amount()));
+            affiliation.add_service_charge(ServiceCharge::new(self.get_date(), self.get_amount()));
             self.dao()
                 .update(emp)
                 .run(ctx)
@@ -870,11 +955,7 @@ trait ChangeUnionMemberTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
                     .run(ctx)
                     .map_err(EmployeeUsecaseError::AddUnionMemberFailed)
             },
-            Box::new(UnionAffiliation {
-                member_id: self.get_member_id(),
-                dues: self.get_dues(),
-                service_charges: vec![],
-            }),
+            Box::new(UnionAffiliation::new(self.get_member_id(), self.get_dues())),
         )
     }
 }
@@ -897,7 +978,7 @@ trait ChangeUnaffiliatedTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
                             "emp_id: {}",
                             self.get_emp_id()
                         ))),
-                        |a| Ok(a.member_id),
+                        |a| Ok(a.get_member_id()),
                     )?;
                 self.dao()
                     .remove_union_member(member_id)
@@ -934,72 +1015,6 @@ trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> {
             }
             Ok(())
         })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct UnionAffiliation {
-    member_id: MemberId,
-    dues: f64,
-
-    service_charges: Vec<ServiceCharge>,
-}
-impl UnionAffiliation {
-    fn get_dues(&self) -> f64 {
-        self.dues
-    }
-}
-impl Affiliation for UnionAffiliation {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-    fn calculate_deductions(&self, pc: &PayCheck) -> f64 {
-        let mut total_deductions = 0.0;
-        let pay_period = pc.get_pay_period();
-        for d in pc.get_pay_period().start().iter_days() {
-            if d > *pay_period.end() {
-                break;
-            }
-            if d.weekday() == Weekday::Fri {
-                total_deductions += self.get_dues();
-            }
-        }
-        for sc in self.service_charges.iter() {
-            if pay_period.contains(&sc.get_date()) {
-                total_deductions += sc.get_amount();
-            }
-        }
-        total_deductions
-    }
-}
-#[derive(Debug, Clone, PartialEq)]
-struct NoAffiliation;
-impl Affiliation for NoAffiliation {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct ServiceCharge {
-    date: NaiveDate,
-    amount: f64,
-}
-impl ServiceCharge {
-    fn new(date: NaiveDate, amount: f64) -> Self {
-        Self { date, amount }
-    }
-    fn get_date(&self) -> NaiveDate {
-        self.date
-    }
-    fn get_amount(&self) -> f64 {
-        self.amount
     }
 }
 
