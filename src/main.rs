@@ -662,9 +662,9 @@ mod general_tx {
     use tx_rs::Tx;
 
     use crate::classification::{
-        CommissionedClassification, HourlyClassification, SalariedClassification,
+        CommissionedClassification, HourlyClassification, SalariedClassification, SalesReceipt,
+        TimeCard,
     };
-    use crate::classification::{SalesReceipt, TimeCard};
     use crate::dao::{EmployeeDao, HaveEmployeeDao};
     use crate::domain::{EmployeeId, PayCheck};
     use crate::schedule::{BiweeklySchedule, MonthlySchedule, WeeklySchedule};
