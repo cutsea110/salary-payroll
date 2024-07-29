@@ -417,7 +417,6 @@ mod method {
         }
     }
 }
-use method::*;
 
 mod affiliation {
     use chrono::{Datelike, NaiveDate, Weekday};
@@ -504,7 +503,6 @@ mod affiliation {
         }
     }
 }
-use affiliation::*;
 
 mod tx_base {
     use thiserror::Error;
@@ -658,7 +656,6 @@ mod tx_base {
     // blanket implementation
     impl<Ctx, T> ChangeAffiliationTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
 }
-use tx_base::*;
 
 mod general_tx {
     use chrono::NaiveDate;
@@ -669,7 +666,7 @@ mod general_tx {
     };
     use crate::classification::{SalesReceipt, TimeCard};
     use crate::dao::{EmployeeDao, HaveEmployeeDao};
-    use crate::domain::EmployeeId;
+    use crate::domain::{EmployeeId, PayCheck};
     use crate::schedule::{BiweeklySchedule, MonthlySchedule, WeeklySchedule};
     use crate::tx_base::{AddEmployeeTransaction, ChangeEmployeeTransaction, EmployeeUsecaseError};
 
@@ -842,6 +839,34 @@ mod general_tx {
             })
         }
     }
+
+    pub trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+        fn get_pay_date(&self) -> NaiveDate;
+        fn record_paycheck(&mut self, pc: PayCheck);
+
+        fn execute<'a>(&mut self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            tx_rs::with_tx(|ctx| {
+                let mut employees = self
+                    .dao()
+                    .get_all()
+                    .run(ctx)
+                    .map_err(EmployeeUsecaseError::GetAllFailed)?;
+                let pay_date = self.get_pay_date();
+                for emp in employees.iter_mut() {
+                    if emp.is_pay_date(pay_date) {
+                        let period = emp.get_pay_period(pay_date);
+                        let mut pc = PayCheck::new(period);
+                        emp.payday(&mut pc);
+                        self.record_paycheck(pc);
+                    }
+                }
+                Ok(())
+            })
+        }
+    }
 }
 use general_tx::*;
 
@@ -905,162 +930,154 @@ mod classification_tx {
 }
 use classification_tx::*;
 
-trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn get_member_id(&self) -> MemberId;
-    fn get_date(&self) -> NaiveDate;
-    fn get_amount(&self) -> f64;
+mod method_tx {
+    use crate::domain::EmployeeId;
+    use crate::method::{DirectMethod, HoldMethod, MailMethod};
+    use crate::tx_base::{ChangeMethodTransaction, EmployeeUsecaseError};
 
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
-        tx_rs::with_tx(move |ctx| {
-            let emp_id = self
-                .dao()
-                .find_union_member(self.get_member_id())
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
-            let emp = self
-                .dao()
-                .fetch(emp_id)
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
-            let mut binding = emp.get_affiliation();
-            let affiliation = binding
-                .as_any_mut()
-                .downcast_mut::<UnionAffiliation>()
-                .ok_or(EmployeeUsecaseError::NotUnionMember(format!(
-                    "emp_id: {0}",
-                    emp_id,
-                )))?;
-            affiliation.add_service_charge(ServiceCharge::new(self.get_date(), self.get_amount()));
-            self.dao()
-                .update(emp)
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
-        })
+    pub trait ChangeDirectTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_bank(&self) -> &str;
+        fn get_account(&self) -> &str;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec_method(
+                self.get_emp_id(),
+                Box::new(DirectMethod::new(
+                    self.get_bank().to_string(),
+                    self.get_account().to_string(),
+                )),
+            )
+        }
+    }
+    pub trait ChangeMailTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_address(&self) -> &str;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec_method(
+                self.get_emp_id(),
+                Box::new(MailMethod::new(self.get_address().to_string())),
+            )
+        }
+    }
+    pub trait ChangeHoldTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec_method(self.get_emp_id(), Box::new(HoldMethod {}))
+        }
     }
 }
+use method_tx::*;
 
-trait ChangeDirectTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_bank(&self) -> &str;
-    fn get_account(&self) -> &str;
+mod affiliation_tx {
+    use chrono::NaiveDate;
+    use tx_rs::Tx;
 
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec_method(
-            self.get_emp_id(),
-            Box::new(DirectMethod::new(
-                self.get_bank().to_string(),
-                self.get_account().to_string(),
-            )),
-        )
-    }
-}
-trait ChangeMailTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_address(&self) -> &str;
+    use crate::affiliation::{NoAffiliation, ServiceCharge, UnionAffiliation};
+    use crate::dao::{EmployeeDao, HaveEmployeeDao};
+    use crate::domain::{EmployeeId, MemberId};
+    use crate::tx_base::{ChangeAffiliationTransaction, EmployeeUsecaseError};
 
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec_method(
-            self.get_emp_id(),
-            Box::new(MailMethod::new(self.get_address().to_string())),
-        )
-    }
-}
-trait ChangeHoldTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
+    pub trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+        fn get_member_id(&self) -> MemberId;
+        fn get_date(&self) -> NaiveDate;
+        fn get_amount(&self) -> f64;
 
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec_method(self.get_emp_id(), Box::new(HoldMethod {}))
-    }
-}
-
-trait ChangeUnionMemberTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-    fn get_member_id(&self) -> MemberId;
-    fn get_dues(&self) -> f64;
-
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec_affiliation(
-            self.get_emp_id(),
-            |ctx, _emp| {
-                self.dao()
-                    .add_union_member(self.get_member_id(), self.get_emp_id())
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
+            tx_rs::with_tx(move |ctx| {
+                let emp_id = self
+                    .dao()
+                    .find_union_member(self.get_member_id())
                     .run(ctx)
-                    .map_err(EmployeeUsecaseError::AddUnionMemberFailed)
-            },
-            Box::new(UnionAffiliation::new(self.get_member_id(), self.get_dues())),
-        )
-    }
-}
-trait ChangeUnaffiliatedTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec_affiliation(
-            self.get_emp_id(),
-            |ctx, emp| {
-                let member_id = emp
-                    .get_affiliation()
-                    .as_any()
-                    .downcast_ref::<UnionAffiliation>()
-                    .map_or(
-                        Err(EmployeeUsecaseError::NotUnionMember(format!(
-                            "emp_id: {}",
-                            self.get_emp_id()
-                        ))),
-                        |a| Ok(a.get_member_id()),
-                    )?;
-                self.dao()
-                    .remove_union_member(member_id)
+                    .map_err(EmployeeUsecaseError::NotFound)?;
+                let emp = self
+                    .dao()
+                    .fetch(emp_id)
                     .run(ctx)
-                    .map_err(EmployeeUsecaseError::RemoveUnionMemberFailed)
-            },
-            Box::new(NoAffiliation),
-        )
+                    .map_err(EmployeeUsecaseError::NotFound)?;
+                let mut binding = emp.get_affiliation();
+                let affiliation = binding
+                    .as_any_mut()
+                    .downcast_mut::<UnionAffiliation>()
+                    .ok_or(EmployeeUsecaseError::NotUnionMember(format!(
+                        "emp_id: {0}",
+                        emp_id,
+                    )))?;
+                affiliation
+                    .add_service_charge(ServiceCharge::new(self.get_date(), self.get_amount()));
+                self.dao()
+                    .update(emp)
+                    .run(ctx)
+                    .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+            })
+        }
+    }
+
+    pub trait ChangeUnionMemberTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+        fn get_member_id(&self) -> MemberId;
+        fn get_dues(&self) -> f64;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec_affiliation(
+                self.get_emp_id(),
+                |ctx, _emp| {
+                    self.dao()
+                        .add_union_member(self.get_member_id(), self.get_emp_id())
+                        .run(ctx)
+                        .map_err(EmployeeUsecaseError::AddUnionMemberFailed)
+                },
+                Box::new(UnionAffiliation::new(self.get_member_id(), self.get_dues())),
+            )
+        }
+    }
+
+    pub trait ChangeUnaffiliatedTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec_affiliation(
+                self.get_emp_id(),
+                |ctx, emp| {
+                    let member_id = emp
+                        .get_affiliation()
+                        .as_any()
+                        .downcast_ref::<UnionAffiliation>()
+                        .map_or(
+                            Err(EmployeeUsecaseError::NotUnionMember(format!(
+                                "emp_id: {}",
+                                self.get_emp_id()
+                            ))),
+                            |a| Ok(a.get_member_id()),
+                        )?;
+                    self.dao()
+                        .remove_union_member(member_id)
+                        .run(ctx)
+                        .map_err(EmployeeUsecaseError::RemoveUnionMemberFailed)
+                },
+                Box::new(NoAffiliation),
+            )
+        }
     }
 }
-
-trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn get_pay_date(&self) -> NaiveDate;
-    fn record_paycheck(&mut self, pc: PayCheck);
-
-    fn execute<'a>(&mut self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        tx_rs::with_tx(|ctx| {
-            let mut employees = self
-                .dao()
-                .get_all()
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::GetAllFailed)?;
-            let pay_date = self.get_pay_date();
-            for emp in employees.iter_mut() {
-                if emp.is_pay_date(pay_date) {
-                    let period = emp.get_pay_period(pay_date);
-                    let mut pc = PayCheck::new(period);
-                    emp.payday(&mut pc);
-                    self.record_paycheck(pc);
-                }
-            }
-            Ok(())
-        })
-    }
-}
+use affiliation_tx::*;
 
 #[derive(Debug, Clone)]
 struct MockDb {
