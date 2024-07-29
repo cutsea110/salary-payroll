@@ -1,7 +1,6 @@
 use chrono::NaiveDate;
 use core::fmt::Debug;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
-use thiserror::Error;
 use tx_rs::Tx;
 
 mod domain {
@@ -509,60 +508,172 @@ mod affiliation {
 }
 use affiliation::*;
 
-#[derive(Debug, Clone, Eq, PartialEq, Error)]
-enum EmployeeUsecaseError {
-    #[error("register employee failed: {0}")]
-    RegisterEmployeeFailed(EmployeeDaoError),
-    #[error("unregister employee failed: {0}")]
-    UnregisterEmployeeFailed(EmployeeDaoError),
-    #[error("employee not found: {0}")]
-    NotFound(EmployeeDaoError),
-    #[error("can't get all employees: {0}")]
-    GetAllFailed(EmployeeDaoError),
-    #[error("employee is not hourly salary: {0}")]
-    NotHourlySalary(String),
-    #[error("employee is not commissioned salary: {0}")]
-    NotCommissionedSalary(String),
-    #[error("update employee failed: {0}")]
-    UpdateEmployeeFailed(EmployeeDaoError),
-    #[error("employee is not union member: {0}")]
-    NotUnionMember(String),
-    #[error("add union member failed: {0}")]
-    AddUnionMemberFailed(EmployeeDaoError),
-    #[error("remove union member failed: {0}")]
-    RemoveUnionMemberFailed(EmployeeDaoError),
-}
+mod tx_base {
+    use thiserror::Error;
+    use tx_rs::Tx;
 
-trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn exec<'a>(
-        &'a self,
-        emp_id: EmployeeId,
-        name: &str,
-        address: &str,
-        classification: Box<dyn PaymentClassification>,
-        schedule: Box<dyn PaymentSchedule>,
-    ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        let method = Box::new(HoldMethod);
-        let affiliation = Box::new(NoAffiliation);
-        let emp = Employee::new(
-            emp_id,
-            name,
-            address,
-            classification,
-            schedule,
-            method,
-            affiliation,
-        );
-        self.dao()
-            .insert(emp)
-            .map_err(EmployeeUsecaseError::RegisterEmployeeFailed)
+    use crate::affiliation::NoAffiliation;
+    use crate::dao::{EmployeeDao, EmployeeDaoError, HaveEmployeeDao};
+    use crate::domain::{
+        Affiliation, Employee, EmployeeId, PaymentClassification, PaymentMethod, PaymentSchedule,
+    };
+    use crate::method::HoldMethod;
+
+    #[derive(Debug, Clone, Eq, PartialEq, Error)]
+    pub enum EmployeeUsecaseError {
+        #[error("register employee failed: {0}")]
+        RegisterEmployeeFailed(EmployeeDaoError),
+        #[error("unregister employee failed: {0}")]
+        UnregisterEmployeeFailed(EmployeeDaoError),
+        #[error("employee not found: {0}")]
+        NotFound(EmployeeDaoError),
+        #[error("can't get all employees: {0}")]
+        GetAllFailed(EmployeeDaoError),
+        #[error("employee is not hourly salary: {0}")]
+        NotHourlySalary(String),
+        #[error("employee is not commissioned salary: {0}")]
+        NotCommissionedSalary(String),
+        #[error("update employee failed: {0}")]
+        UpdateEmployeeFailed(EmployeeDaoError),
+        #[error("employee is not union member: {0}")]
+        NotUnionMember(String),
+        #[error("add union member failed: {0}")]
+        AddUnionMemberFailed(EmployeeDaoError),
+        #[error("remove union member failed: {0}")]
+        RemoveUnionMemberFailed(EmployeeDaoError),
     }
+
+    pub trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+        fn exec<'a>(
+            &'a self,
+            emp_id: EmployeeId,
+            name: &str,
+            address: &str,
+            classification: Box<dyn PaymentClassification>,
+            schedule: Box<dyn PaymentSchedule>,
+        ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            let method = Box::new(HoldMethod);
+            let affiliation = Box::new(NoAffiliation);
+            let emp = Employee::new(
+                emp_id,
+                name,
+                address,
+                classification,
+                schedule,
+                method,
+                affiliation,
+            );
+            self.dao()
+                .insert(emp)
+                .map_err(EmployeeUsecaseError::RegisterEmployeeFailed)
+        }
+    }
+    // blanket implementation
+    impl<T, Ctx> AddEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> {}
+
+    pub trait DeleteEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+        fn get_emp_id(&self) -> EmployeeId;
+
+        fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.dao()
+                .delete(self.get_emp_id())
+                .map_err(EmployeeUsecaseError::UnregisterEmployeeFailed)
+        }
+    }
+
+    pub trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+        fn exec<'a, F>(
+            &'a self,
+            emp_id: EmployeeId,
+            f: F,
+        ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError>,
+            Ctx: 'a,
+        {
+            tx_rs::with_tx(move |ctx| {
+                let mut emp = self
+                    .dao()
+                    .fetch(emp_id)
+                    .run(ctx)
+                    .map_err(EmployeeUsecaseError::NotFound)?;
+                f(ctx, &mut emp)?;
+                self.dao()
+                    .update(emp)
+                    .run(ctx)
+                    .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+            })
+        }
+    }
+    // blanket implementation
+    impl<Ctx, T> ChangeEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> {}
+
+    pub trait ChangeClassificationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+        fn exec_classification<'a>(
+            &'a self,
+            emp_id: EmployeeId,
+            classification: Box<dyn PaymentClassification>,
+            schedule: Box<dyn PaymentSchedule>,
+        ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec(emp_id, |_ctx, emp| {
+                emp.set_classification(classification);
+                emp.set_schedule(schedule);
+                Ok(())
+            })
+        }
+    }
+    // blanket implementation
+    impl<Ctx, T> ChangeClassificationTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
+
+    pub trait ChangeMethodTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+        fn exec_method<'a>(
+            &'a self,
+            emp_id: EmployeeId,
+            method: Box<dyn PaymentMethod>,
+        ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            Ctx: 'a,
+        {
+            self.exec(emp_id, |_ctx, emp| {
+                emp.set_method(method);
+                Ok(())
+            })
+        }
+    }
+    // blanket implementation
+    impl<Ctx, T> ChangeMethodTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
+
+    pub trait ChangeAffiliationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+        fn exec_affiliation<'a, F>(
+            &'a self,
+            emp_id: EmployeeId,
+            record_membership: F,
+            affiliation: Box<dyn Affiliation>,
+        ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+        where
+            F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError> + 'a,
+            Ctx: 'a,
+        {
+            self.exec(emp_id, |ctx, emp| {
+                record_membership(ctx, emp)?;
+                emp.set_affiliation(affiliation);
+                Ok(())
+            })
+        }
+    }
+    // blanket implementation
+    impl<Ctx, T> ChangeAffiliationTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
 }
-// blanket implementation
-impl<T, Ctx> AddEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> {}
+use tx_base::*;
 
 trait AddSalaryEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
@@ -623,19 +734,6 @@ trait AddCommissionedEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
         let schedule = Box::new(BiweeklySchedule);
 
         self.exec(emp_id, name, address, classification, schedule)
-    }
-}
-
-trait DeleteEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn get_emp_id(&self) -> EmployeeId;
-
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.dao()
-            .delete(self.get_emp_id())
-            .map_err(EmployeeUsecaseError::UnregisterEmployeeFailed)
     }
 }
 
@@ -731,33 +829,6 @@ trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     }
 }
 
-trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn exec<'a, F>(
-        &'a self,
-        emp_id: EmployeeId,
-        f: F,
-    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError>,
-        Ctx: 'a,
-    {
-        tx_rs::with_tx(move |ctx| {
-            let mut emp = self
-                .dao()
-                .fetch(emp_id)
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
-            f(ctx, &mut emp)?;
-            self.dao()
-                .update(emp)
-                .run(ctx)
-                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
-        })
-    }
-}
-// blanket implementation
-impl<Ctx, T> ChangeEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> {}
-
 trait ChangeNameTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
     fn get_name(&self) -> &str;
@@ -786,25 +857,6 @@ trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         })
     }
 }
-trait ChangeClassificationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
-    fn exec_classification<'a>(
-        &'a self,
-        emp_id: EmployeeId,
-        classification: Box<dyn PaymentClassification>,
-        schedule: Box<dyn PaymentSchedule>,
-    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec(emp_id, |_ctx, emp| {
-            emp.set_classification(classification);
-            emp.set_schedule(schedule);
-            Ok(())
-        })
-    }
-}
-// blanket implementation
-impl<Ctx, T> ChangeClassificationTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
 
 trait ChangeSalariedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
@@ -856,24 +908,6 @@ trait ChangeCommissionedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
     }
 }
 
-trait ChangeMethodTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
-    fn exec_method<'a>(
-        &'a self,
-        emp_id: EmployeeId,
-        method: Box<dyn PaymentMethod>,
-    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        Ctx: 'a,
-    {
-        self.exec(emp_id, |_ctx, emp| {
-            emp.set_method(method);
-            Ok(())
-        })
-    }
-}
-// blanket implementation
-impl<Ctx, T> ChangeMethodTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
-
 trait ChangeDirectTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
     fn get_bank(&self) -> &str;
@@ -916,27 +950,6 @@ trait ChangeHoldTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
         self.exec_method(self.get_emp_id(), Box::new(HoldMethod {}))
     }
 }
-
-trait ChangeAffiliationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
-    fn exec_affiliation<'a, F>(
-        &'a self,
-        emp_id: EmployeeId,
-        record_membership: F,
-        affiliation: Box<dyn Affiliation>,
-    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
-    where
-        F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError> + 'a,
-        Ctx: 'a,
-    {
-        self.exec(emp_id, |ctx, emp| {
-            record_membership(ctx, emp)?;
-            emp.set_affiliation(affiliation);
-            Ok(())
-        })
-    }
-}
-// blanket implementation
-impl<Ctx, T> ChangeAffiliationTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
 
 trait ChangeUnionMemberTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
     fn get_emp_id(&self) -> EmployeeId;
