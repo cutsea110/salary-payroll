@@ -643,7 +643,7 @@ mod tx_base {
             affiliation: Box<dyn Affiliation>,
         ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
-            F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError> + 'a,
+            F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError>,
             Ctx: 'a,
         {
             self.exec(emp_id, |ctx, emp| {
