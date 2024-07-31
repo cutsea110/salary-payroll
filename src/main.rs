@@ -670,12 +670,15 @@ mod general_tx {
     use crate::schedule::{BiweeklySchedule, MonthlySchedule, WeeklySchedule};
     use crate::tx_base::{AddEmployeeTransaction, ChangeEmployeeTransaction, EmployeeUsecaseError};
 
-    pub trait AddSalaryEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+    pub trait SalaryEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_name(&self) -> &str;
         fn get_address(&self) -> &str;
         fn get_salary(&self) -> f64;
-
+    }
+    pub trait AddSalaryEmployeeTransaction<Ctx>:
+        AddEmployeeTransaction<Ctx> + SalaryEmployee
+    {
         fn execute<'a>(
             &'a self,
         ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
@@ -691,12 +694,21 @@ mod general_tx {
             self.exec(emp_id, name, address, classification, schedule)
         }
     }
-    pub trait AddHourlyEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+    // blanket implementation
+    impl<T, Ctx> AddSalaryEmployeeTransaction<Ctx> for T where
+        T: AddEmployeeTransaction<Ctx> + SalaryEmployee
+    {
+    }
+
+    pub trait HourlyEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_name(&self) -> &str;
         fn get_address(&self) -> &str;
         fn get_hourly_rate(&self) -> f64;
-
+    }
+    pub trait AddHourlyEmployeeTransaction<Ctx>:
+        AddEmployeeTransaction<Ctx> + HourlyEmployee
+    {
         fn execute<'a>(
             &'a self,
         ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
@@ -712,13 +724,22 @@ mod general_tx {
             self.exec(emp_id, name, address, classification, schedule)
         }
     }
-    pub trait AddCommissionedEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
+    // blanket implementation
+    impl<T, Ctx> AddHourlyEmployeeTransaction<Ctx> for T where
+        T: AddEmployeeTransaction<Ctx> + HourlyEmployee
+    {
+    }
+
+    pub trait CommissionedEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_name(&self) -> &str;
         fn get_address(&self) -> &str;
         fn get_salary(&self) -> f64;
         fn get_commission_rate(&self) -> f64;
-
+    }
+    pub trait AddCommissionedEmployeeTransaction<Ctx>:
+        AddEmployeeTransaction<Ctx> + CommissionedEmployee
+    {
         fn execute<'a>(
             &'a self,
         ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
@@ -737,10 +758,16 @@ mod general_tx {
             self.exec(emp_id, name, address, classification, schedule)
         }
     }
+    // blanket implementation
+    impl<T, Ctx> AddCommissionedEmployeeTransaction<Ctx> for T where
+        T: AddEmployeeTransaction<Ctx> + CommissionedEmployee
+    {
+    }
 
-    pub trait DeleteEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+    pub trait DeletableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
-
+    }
+    pub trait DeleteEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> + DeletableEmployee {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -750,12 +777,15 @@ mod general_tx {
                 .map_err(EmployeeUsecaseError::UnregisterEmployeeFailed)
         }
     }
+    // blanket implementation
+    impl<Ctx, T> DeleteEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> + DeletableEmployee {}
 
-    pub trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+    pub trait TimeCardEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_date(&self) -> NaiveDate;
         fn get_hours(&self) -> f64;
-
+    }
+    pub trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> + TimeCardEmployee {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
             tx_rs::with_tx(move |ctx| {
                 let emp = self
@@ -779,12 +809,15 @@ mod general_tx {
             })
         }
     }
+    // blanket implementation
+    impl<Ctx, T> TimeCardTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> + TimeCardEmployee {}
 
-    pub trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+    pub trait SalesReceiptEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_date(&self) -> NaiveDate;
         fn get_amount(&self) -> f64;
-
+    }
+    pub trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> + SalesReceiptEmployee {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
             tx_rs::with_tx(move |ctx| {
                 let emp = self
@@ -809,11 +842,16 @@ mod general_tx {
             })
         }
     }
+    // blanket implementation
+    impl<Ctx, T> SalesReceiptTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> + SalesReceiptEmployee {}
 
-    pub trait ChangeNameTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    pub trait NameChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_name(&self) -> &str;
-
+    }
+    pub trait ChangeNameTransaction<Ctx>:
+        ChangeEmployeeTransaction<Ctx> + NameChangeableEmployee
+    {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -824,11 +862,19 @@ mod general_tx {
             })
         }
     }
+    // blanket implementation
+    impl<T, Ctx> ChangeNameTransaction<Ctx> for T where
+        T: ChangeEmployeeTransaction<Ctx> + NameChangeableEmployee
+    {
+    }
 
-    pub trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
+    pub trait AddressChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_address(&self) -> &str;
-
+    }
+    pub trait ChangeAddressTransaction<Ctx>:
+        ChangeEmployeeTransaction<Ctx> + AddressChangeableEmployee
+    {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -839,11 +885,17 @@ mod general_tx {
             })
         }
     }
+    // blanket implementation
+    impl<T, Ctx> ChangeAddressTransaction<Ctx> for T where
+        T: ChangeEmployeeTransaction<Ctx> + AddressChangeableEmployee
+    {
+    }
 
-    pub trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+    pub trait PayableEmployee {
         fn get_pay_date(&self) -> NaiveDate;
         fn record_paycheck(&mut self, pc: PayCheck);
-
+    }
+    pub trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> + PayableEmployee {
         fn execute<'a>(&mut self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -867,6 +919,8 @@ mod general_tx {
             })
         }
     }
+    // blanket implementation
+    impl<Ctx, T> PaydayTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> + PayableEmployee {}
 }
 use general_tx::*;
 
@@ -878,10 +932,14 @@ mod classification_tx {
     use crate::schedule::{BiweeklySchedule, MonthlySchedule, WeeklySchedule};
     use crate::tx_base::{ChangeClassificationTransaction, EmployeeUsecaseError};
 
-    pub trait ChangeSalariedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
+    pub trait SalaryChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_salary(&self) -> f64;
+    }
 
+    pub trait ChangeSalariedTransaction<Ctx>:
+        ChangeClassificationTransaction<Ctx> + SalaryChangeableEmployee
+    {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -893,10 +951,19 @@ mod classification_tx {
             )
         }
     }
-    pub trait ChangeHourlyTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
+    // blanket implementation
+    impl<T, Ctx> ChangeSalariedTransaction<Ctx> for T where
+        T: ChangeClassificationTransaction<Ctx> + SalaryChangeableEmployee
+    {
+    }
+
+    pub trait HourlyChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_hourly_rate(&self) -> f64;
-
+    }
+    pub trait ChangeHourlyTransaction<Ctx>:
+        ChangeClassificationTransaction<Ctx> + HourlyChangeableEmployee
+    {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -908,11 +975,20 @@ mod classification_tx {
             )
         }
     }
-    pub trait ChangeCommissionedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
+    // blanket implementation
+    impl<T, Ctx> ChangeHourlyTransaction<Ctx> for T where
+        T: ChangeClassificationTransaction<Ctx> + HourlyChangeableEmployee
+    {
+    }
+
+    pub trait CommissionedChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_salary(&self) -> f64;
         fn get_commission_rate(&self) -> f64;
-
+    }
+    pub trait ChangeCommissionedTransaction<Ctx>:
+        ChangeClassificationTransaction<Ctx> + CommissionedChangeableEmployee
+    {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -927,6 +1003,11 @@ mod classification_tx {
             )
         }
     }
+    // blanket implementation
+    impl<T, Ctx> ChangeCommissionedTransaction<Ctx> for T where
+        T: ChangeClassificationTransaction<Ctx> + CommissionedChangeableEmployee
+    {
+    }
 }
 use classification_tx::*;
 
@@ -935,11 +1016,14 @@ mod method_tx {
     use crate::method::{DirectMethod, HoldMethod, MailMethod};
     use crate::tx_base::{ChangeMethodTransaction, EmployeeUsecaseError};
 
-    pub trait ChangeDirectTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
+    pub trait DirectChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_bank(&self) -> &str;
         fn get_account(&self) -> &str;
-
+    }
+    pub trait ChangeDirectTransaction<Ctx>:
+        ChangeMethodTransaction<Ctx> + DirectChangeableEmployee
+    {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -953,10 +1037,19 @@ mod method_tx {
             )
         }
     }
-    pub trait ChangeMailTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
+    // blanket implementation
+    impl<T, Ctx> ChangeDirectTransaction<Ctx> for T where
+        T: ChangeMethodTransaction<Ctx> + DirectChangeableEmployee
+    {
+    }
+
+    pub trait MailChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_address(&self) -> &str;
-
+    }
+    pub trait ChangeMailTransaction<Ctx>:
+        ChangeMethodTransaction<Ctx> + MailChangeableEmployee
+    {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -967,15 +1060,29 @@ mod method_tx {
             )
         }
     }
-    pub trait ChangeHoldTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
-        fn get_emp_id(&self) -> EmployeeId;
+    // blanket implementation
+    impl<T, Ctx> ChangeMailTransaction<Ctx> for T where
+        T: ChangeMethodTransaction<Ctx> + MailChangeableEmployee
+    {
+    }
 
+    pub trait HoldChangeableEmployee {
+        fn get_emp_id(&self) -> EmployeeId;
+    }
+    pub trait ChangeHoldTransaction<Ctx>:
+        ChangeMethodTransaction<Ctx> + HoldChangeableEmployee
+    {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
         {
             self.exec_method(self.get_emp_id(), Box::new(HoldMethod {}))
         }
+    }
+    // blanket implementation
+    impl<T, Ctx> ChangeHoldTransaction<Ctx> for T where
+        T: ChangeMethodTransaction<Ctx> + HoldChangeableEmployee
+    {
     }
 }
 use method_tx::*;
@@ -989,11 +1096,14 @@ mod affiliation_tx {
     use crate::domain::{EmployeeId, MemberId};
     use crate::tx_base::{ChangeAffiliationTransaction, EmployeeUsecaseError};
 
-    pub trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
+    pub trait ServiceChargeableMember {
         fn get_member_id(&self) -> MemberId;
         fn get_date(&self) -> NaiveDate;
         fn get_amount(&self) -> f64;
-
+    }
+    pub trait ServiceChargeTransaction<Ctx>:
+        HaveEmployeeDao<Ctx> + ServiceChargeableMember
+    {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
             tx_rs::with_tx(move |ctx| {
                 let emp_id = self
@@ -1023,12 +1133,20 @@ mod affiliation_tx {
             })
         }
     }
+    // blanket implementation
+    impl<T, Ctx> ServiceChargeTransaction<Ctx> for T where
+        T: HaveEmployeeDao<Ctx> + ServiceChargeableMember
+    {
+    }
 
-    pub trait ChangeUnionMemberTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
+    pub trait UnionChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_member_id(&self) -> MemberId;
         fn get_dues(&self) -> f64;
-
+    }
+    pub trait ChangeUnionMemberTransaction<Ctx>:
+        ChangeAffiliationTransaction<Ctx> + UnionChangeableEmployee
+    {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -1045,10 +1163,18 @@ mod affiliation_tx {
             )
         }
     }
+    // blanket implementation
+    impl<T, Ctx> ChangeUnionMemberTransaction<Ctx> for T where
+        T: ChangeAffiliationTransaction<Ctx> + UnionChangeableEmployee
+    {
+    }
 
-    pub trait ChangeUnaffiliatedTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
+    pub trait NoAffiliationChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
-
+    }
+    pub trait ChangeUnaffiliatedTransaction<Ctx>:
+        ChangeAffiliationTransaction<Ctx> + NoAffiliationChangeableEmployee
+    {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -1075,6 +1201,11 @@ mod affiliation_tx {
                 Box::new(NoAffiliation),
             )
         }
+    }
+    // blanket implementation
+    impl<T, Ctx> ChangeUnaffiliatedTransaction<Ctx> for T where
+        T: ChangeAffiliationTransaction<Ctx> + NoAffiliationChangeableEmployee
+    {
     }
 }
 use affiliation_tx::*;
@@ -1205,7 +1336,7 @@ impl HaveEmployeeDao<()> for AddSalariedEmployeeTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl AddSalaryEmployeeTransaction<()> for AddSalariedEmployeeTransactionImpl {
+impl SalaryEmployee for AddSalariedEmployeeTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1233,7 +1364,7 @@ impl HaveEmployeeDao<()> for AddHourlyEmployeeTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl AddHourlyEmployeeTransaction<()> for AddHourlyEmployeeTransactionImpl {
+impl HourlyEmployee for AddHourlyEmployeeTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1262,7 +1393,7 @@ impl HaveEmployeeDao<()> for AddCommissionedEmployeeTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl AddCommissionedEmployeeTransaction<()> for AddCommissionedEmployeeTransactionImpl {
+impl CommissionedEmployee for AddCommissionedEmployeeTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1290,7 +1421,7 @@ impl HaveEmployeeDao<()> for DeleteEmployeeTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl DeleteEmployeeTransaction<()> for DeleteEmployeeTransactionImpl {
+impl DeletableEmployee for DeleteEmployeeTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1308,7 +1439,7 @@ impl HaveEmployeeDao<()> for TimeCardTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl TimeCardTransaction<()> for TimeCardTransactionImpl {
+impl TimeCardEmployee for TimeCardTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1332,7 +1463,7 @@ impl HaveEmployeeDao<()> for SalesReceiptTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl SalesReceiptTransaction<()> for SalesReceiptTransactionImpl {
+impl SalesReceiptEmployee for SalesReceiptTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1356,7 +1487,7 @@ impl HaveEmployeeDao<()> for ServiceChargeTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ServiceChargeTransaction<()> for ServiceChargeTransactionImpl {
+impl ServiceChargeableMember for ServiceChargeTransactionImpl {
     fn get_member_id(&self) -> MemberId {
         self.member_id
     }
@@ -1379,7 +1510,7 @@ impl HaveEmployeeDao<()> for ChangeNameTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeNameTransaction<()> for ChangeNameTransactionImpl {
+impl NameChangeableEmployee for ChangeNameTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1399,7 +1530,7 @@ impl HaveEmployeeDao<()> for ChangeAddressTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeAddressTransaction<()> for ChangeAddressTransactionImpl {
+impl AddressChangeableEmployee for ChangeAddressTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1419,7 +1550,7 @@ impl HaveEmployeeDao<()> for ChangeSalaryTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeSalariedTransaction<()> for ChangeSalaryTransactionImpl {
+impl SalaryChangeableEmployee for ChangeSalaryTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1439,7 +1570,7 @@ impl HaveEmployeeDao<()> for ChangeHourlyTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeHourlyTransaction<()> for ChangeHourlyTransactionImpl {
+impl HourlyChangeableEmployee for ChangeHourlyTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1460,7 +1591,7 @@ impl HaveEmployeeDao<()> for ChangeCommissionedTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeCommissionedTransaction<()> for ChangeCommissionedTransactionImpl {
+impl CommissionedChangeableEmployee for ChangeCommissionedTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1484,7 +1615,7 @@ impl HaveEmployeeDao<()> for ChangeDirectTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeDirectTransaction<()> for ChangeDirectTransactionImpl {
+impl DirectChangeableEmployee for ChangeDirectTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1507,7 +1638,7 @@ impl HaveEmployeeDao<()> for ChangeMailTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeMailTransaction<()> for ChangeMailTransactionImpl {
+impl MailChangeableEmployee for ChangeMailTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1526,7 +1657,7 @@ impl HaveEmployeeDao<()> for ChangeHoldTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeHoldTransaction<()> for ChangeHoldTransactionImpl {
+impl HoldChangeableEmployee for ChangeHoldTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1544,7 +1675,7 @@ impl HaveEmployeeDao<()> for ChangeUnionMemberTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeUnionMemberTransaction<()> for ChangeUnionMemberTransactionImpl {
+impl UnionChangeableEmployee for ChangeUnionMemberTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1566,7 +1697,7 @@ impl HaveEmployeeDao<()> for ChangeNoMemberTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ChangeUnaffiliatedTransaction<()> for ChangeNoMemberTransactionImpl {
+impl NoAffiliationChangeableEmployee for ChangeNoMemberTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
@@ -1583,7 +1714,7 @@ impl HaveEmployeeDao<()> for PaydayTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl PaydayTransaction<()> for PaydayTransactionImpl {
+impl PayableEmployee for PaydayTransactionImpl {
     fn get_pay_date(&self) -> NaiveDate {
         self.pay_date
     }
