@@ -540,7 +540,7 @@ mod tx_base {
     }
 
     pub trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-        fn exec<'a>(
+        fn execute<'a>(
             &'a self,
             emp_id: EmployeeId,
             name: &str,
@@ -571,7 +571,7 @@ mod tx_base {
     impl<T, Ctx> AddEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> {}
 
     pub trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-        fn exec<'a, F>(
+        fn execute<'a, F>(
             &'a self,
             emp_id: EmployeeId,
             f: F,
@@ -598,7 +598,7 @@ mod tx_base {
     impl<Ctx, T> ChangeEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> {}
 
     pub trait ChangeClassificationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
-        fn exec_classification<'a>(
+        fn execute<'a>(
             &'a self,
             emp_id: EmployeeId,
             classification: Box<dyn PaymentClassification>,
@@ -607,7 +607,7 @@ mod tx_base {
         where
             Ctx: 'a,
         {
-            self.exec(emp_id, |_ctx, emp| {
+            ChangeEmployeeTransaction::<Ctx>::execute(self, emp_id, |_ctx, emp| {
                 emp.set_classification(classification);
                 emp.set_schedule(schedule);
                 Ok(())
@@ -618,7 +618,7 @@ mod tx_base {
     impl<Ctx, T> ChangeClassificationTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
 
     pub trait ChangeMethodTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
-        fn exec_method<'a>(
+        fn execute<'a>(
             &'a self,
             emp_id: EmployeeId,
             method: Box<dyn PaymentMethod>,
@@ -626,7 +626,7 @@ mod tx_base {
         where
             Ctx: 'a,
         {
-            self.exec(emp_id, |_ctx, emp| {
+            ChangeEmployeeTransaction::<Ctx>::execute(self, emp_id, |_ctx, emp| {
                 emp.set_method(method);
                 Ok(())
             })
@@ -636,7 +636,7 @@ mod tx_base {
     impl<Ctx, T> ChangeMethodTransaction<Ctx> for T where T: ChangeEmployeeTransaction<Ctx> {}
 
     pub trait ChangeAffiliationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
-        fn exec_affiliation<'a, F>(
+        fn execute<'a, F>(
             &'a self,
             emp_id: EmployeeId,
             record_membership: F,
@@ -646,7 +646,7 @@ mod tx_base {
             F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError>,
             Ctx: 'a,
         {
-            self.exec(emp_id, |ctx, emp| {
+            ChangeEmployeeTransaction::<Ctx>::execute(self, emp_id, |ctx, emp| {
                 record_membership(ctx, emp)?;
                 emp.set_affiliation(affiliation);
                 Ok(())
@@ -691,7 +691,14 @@ mod general_tx {
             let classification = Box::new(SalariedClassification::new(self.get_salary()));
             let schedule = Box::new(MonthlySchedule);
 
-            self.exec(emp_id, name, address, classification, schedule)
+            AddEmployeeTransaction::<Ctx>::execute(
+                self,
+                emp_id,
+                name,
+                address,
+                classification,
+                schedule,
+            )
         }
     }
     // blanket implementation
@@ -721,7 +728,14 @@ mod general_tx {
             let classification = Box::new(HourlyClassification::new(self.get_hourly_rate()));
             let schedule = Box::new(WeeklySchedule);
 
-            self.exec(emp_id, name, address, classification, schedule)
+            AddEmployeeTransaction::<Ctx>::execute(
+                self,
+                emp_id,
+                name,
+                address,
+                classification,
+                schedule,
+            )
         }
     }
     // blanket implementation
@@ -755,7 +769,14 @@ mod general_tx {
             ));
             let schedule = Box::new(BiweeklySchedule);
 
-            self.exec(emp_id, name, address, classification, schedule)
+            AddEmployeeTransaction::<Ctx>::execute(
+                self,
+                emp_id,
+                name,
+                address,
+                classification,
+                schedule,
+            )
         }
     }
     // blanket implementation
@@ -856,7 +877,7 @@ mod general_tx {
         where
             Ctx: 'a,
         {
-            self.exec(self.get_emp_id(), |_ctx, emp| {
+            ChangeEmployeeTransaction::<Ctx>::execute(self, self.get_emp_id(), |_ctx, emp| {
                 emp.set_name(self.get_name());
                 Ok(())
             })
@@ -879,7 +900,7 @@ mod general_tx {
         where
             Ctx: 'a,
         {
-            self.exec(self.get_emp_id(), |_ctx, emp| {
+            ChangeEmployeeTransaction::<Ctx>::execute(self, self.get_emp_id(), |_ctx, emp| {
                 emp.set_address(self.get_address());
                 Ok(())
             })
@@ -944,7 +965,8 @@ mod classification_tx {
         where
             Ctx: 'a,
         {
-            self.exec_classification(
+            ChangeClassificationTransaction::<Ctx>::execute(
+                self,
                 self.get_emp_id(),
                 Box::new(SalariedClassification::new(self.get_salary())),
                 Box::new(MonthlySchedule),
@@ -968,7 +990,8 @@ mod classification_tx {
         where
             Ctx: 'a,
         {
-            self.exec_classification(
+            ChangeClassificationTransaction::<Ctx>::execute(
+                self,
                 self.get_emp_id(),
                 Box::new(HourlyClassification::new(self.get_hourly_rate())),
                 Box::new(WeeklySchedule),
@@ -993,7 +1016,8 @@ mod classification_tx {
         where
             Ctx: 'a,
         {
-            self.exec_classification(
+            ChangeClassificationTransaction::<Ctx>::execute(
+                self,
                 self.get_emp_id(),
                 Box::new(CommissionedClassification::new(
                     self.get_salary(),
@@ -1028,7 +1052,8 @@ mod method_tx {
         where
             Ctx: 'a,
         {
-            self.exec_method(
+            ChangeMethodTransaction::<Ctx>::execute(
+                self,
                 self.get_emp_id(),
                 Box::new(DirectMethod::new(
                     self.get_bank().to_string(),
@@ -1054,7 +1079,8 @@ mod method_tx {
         where
             Ctx: 'a,
         {
-            self.exec_method(
+            ChangeMethodTransaction::<Ctx>::execute(
+                self,
                 self.get_emp_id(),
                 Box::new(MailMethod::new(self.get_address().to_string())),
             )
@@ -1076,7 +1102,11 @@ mod method_tx {
         where
             Ctx: 'a,
         {
-            self.exec_method(self.get_emp_id(), Box::new(HoldMethod {}))
+            ChangeMethodTransaction::<Ctx>::execute(
+                self,
+                self.get_emp_id(),
+                Box::new(HoldMethod {}),
+            )
         }
     }
     // blanket implementation
@@ -1151,7 +1181,8 @@ mod affiliation_tx {
         where
             Ctx: 'a,
         {
-            self.exec_affiliation(
+            ChangeAffiliationTransaction::<Ctx>::execute(
+                self,
                 self.get_emp_id(),
                 |ctx, _emp| {
                     self.dao()
@@ -1179,7 +1210,8 @@ mod affiliation_tx {
         where
             Ctx: 'a,
         {
-            self.exec_affiliation(
+            ChangeAffiliationTransaction::<Ctx>::execute(
+                self,
                 self.get_emp_id(),
                 |ctx, emp| {
                     let member_id = emp
