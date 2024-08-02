@@ -1526,6 +1526,35 @@ mod method_tx {
         }
     }
 
+    pub struct MailChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeMailTransaction<Ctx>,
+    {
+        base: T,
+        phantom: PhantomData<Ctx>,
+    }
+    impl<T, Ctx> MailChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeMailTransaction<Ctx>,
+    {
+        pub fn new(base: T) -> Self {
+            MailChgEmpTxTemplate {
+                base,
+                phantom: PhantomData,
+            }
+        }
+    }
+    impl<T, Ctx> Transaction<Ctx> for MailChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeMailTransaction<Ctx>,
+    {
+        type Item = ();
+
+        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
+            ChangeMailTransaction::<Ctx>::execute(&self.base)
+        }
+    }
+
     pub trait MailChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_address(&self) -> &str;
@@ -1548,6 +1577,14 @@ mod method_tx {
     impl<T, Ctx> ChangeMailTransaction<Ctx> for T where
         T: ChangeMethodTransaction<Ctx> + MailChangeableEmployee
     {
+    }
+    impl<T, Ctx> From<T> for MailChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeMailTransaction<Ctx>,
+    {
+        fn from(base: T) -> Self {
+            MailChgEmpTxTemplate::new(base)
+        }
     }
 
     pub trait HoldChangeableEmployee {
@@ -3371,11 +3408,12 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("change direct");
     println!("change direct: {:#?}", db);
 
-    let req = ChangeMailTransactionImpl {
+    let req: MailChgEmpTxTemplate<_, _> = ChangeMailTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         address: "alice@gmail.com".to_string(),
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change mail");
     println!("change mail: {:#?}", db);
 
