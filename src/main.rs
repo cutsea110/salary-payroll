@@ -904,6 +904,35 @@ mod general_tx {
         }
     }
 
+    pub struct DeleteEmpTxTemplate<T, Ctx>
+    where
+        T: DeleteEmployeeTransaction<Ctx>,
+    {
+        base: T,
+        phantom: PhantomData<Ctx>,
+    }
+    impl<T, Ctx> DeleteEmpTxTemplate<T, Ctx>
+    where
+        T: DeleteEmployeeTransaction<Ctx>,
+    {
+        pub fn new(base: T) -> Self {
+            DeleteEmpTxTemplate {
+                base,
+                phantom: PhantomData,
+            }
+        }
+    }
+    impl<T, Ctx> Transaction<Ctx> for DeleteEmpTxTemplate<T, Ctx>
+    where
+        T: DeleteEmployeeTransaction<Ctx>,
+    {
+        type Item = ();
+
+        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
+            DeleteEmployeeTransaction::<Ctx>::execute(&self.base)
+        }
+    }
+
     pub trait DeletableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
     }
@@ -919,6 +948,14 @@ mod general_tx {
     }
     // blanket implementation
     impl<Ctx, T> DeleteEmployeeTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> + DeletableEmployee {}
+    impl<T, Ctx> From<T> for DeleteEmpTxTemplate<T, Ctx>
+    where
+        T: DeleteEmployeeTransaction<Ctx>,
+    {
+        fn from(base: T) -> Self {
+            DeleteEmpTxTemplate::new(base)
+        }
+    }
 
     pub trait TimeCardEmployee {
         fn get_emp_id(&self) -> EmployeeId;
@@ -3100,10 +3137,11 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", req.paychecks);
 
-    let req = DeleteEmployeeTransactionImpl {
+    let req: DeleteEmpTxTemplate<_, _> = DeleteEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 1,
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("delete employee");
 
     let req = AddHourlyEmployeeTransactionImpl {
