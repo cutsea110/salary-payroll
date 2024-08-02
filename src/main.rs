@@ -540,7 +540,8 @@ mod tx_base {
     }
 
     pub trait Transaction<Ctx> {
-        fn execute(&self);
+        type Item;
+        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError>;
     }
 
     pub trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
@@ -681,15 +682,28 @@ mod general_tx {
     where
         T: AddSalaryEmployeeTransaction<Ctx>,
     {
-        internal: T,
+        base: T,
         phantom: PhantomData<Ctx>,
+    }
+    impl<T, Ctx> AddSalaryEmpTxTemplate<T, Ctx>
+    where
+        T: AddSalaryEmployeeTransaction<Ctx>,
+    {
+        pub fn new(base: T) -> Self {
+            AddSalaryEmpTxTemplate {
+                base,
+                phantom: PhantomData,
+            }
+        }
     }
     impl<T, Ctx> Transaction<Ctx> for AddSalaryEmpTxTemplate<T, Ctx>
     where
         T: AddSalaryEmployeeTransaction<Ctx>,
     {
-        fn execute(&self) {
-            AddSalaryEmployeeTransaction::<Ctx>::execute(&self.internal);
+        type Item = EmployeeId;
+
+        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
+            AddSalaryEmployeeTransaction::<Ctx>::execute(&self.base)
         }
     }
 
@@ -2807,18 +2821,20 @@ pub mod parser {
 }
 
 fn main() {
+    use crate::tx_base::Transaction;
+
     let db = MockDb {
         employees: Rc::new(RefCell::new(HashMap::new())),
         union_members: Rc::new(RefCell::new(HashMap::new())),
     };
 
-    let req = AddSalariedEmployeeTransactionImpl {
+    let req = AddSalaryEmpTxTemplate::new(AddSalariedEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 1,
         name: "Bob".to_string(),
         address: "Home".to_string(),
         salary: 1000.00,
-    };
+    });
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
