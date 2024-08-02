@@ -1096,6 +1096,35 @@ mod general_tx {
         }
     }
 
+    pub struct NameChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeNameTransaction<Ctx>,
+    {
+        base: T,
+        phantom: PhantomData<Ctx>,
+    }
+    impl<T, Ctx> NameChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeNameTransaction<Ctx>,
+    {
+        pub fn new(base: T) -> Self {
+            NameChgEmpTxTemplate {
+                base,
+                phantom: PhantomData,
+            }
+        }
+    }
+    impl<T, Ctx> Transaction<Ctx> for NameChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeNameTransaction<Ctx>,
+    {
+        type Item = ();
+
+        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
+            ChangeNameTransaction::<Ctx>::execute(&self.base)
+        }
+    }
+
     pub trait NameChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_name(&self) -> &str;
@@ -1117,6 +1146,14 @@ mod general_tx {
     impl<T, Ctx> ChangeNameTransaction<Ctx> for T where
         T: ChangeEmployeeTransaction<Ctx> + NameChangeableEmployee
     {
+    }
+    impl<T, Ctx> From<T> for NameChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeNameTransaction<Ctx>,
+    {
+        fn from(base: T) -> Self {
+            NameChgEmpTxTemplate::new(base)
+        }
     }
 
     pub trait AddressChangeableEmployee {
@@ -3033,11 +3070,12 @@ fn main() {
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = ChangeNameTransactionImpl {
+    let req: NameChgEmpTxTemplate<_, _> = ChangeNameTransactionImpl {
         db: db.clone(),
         emp_id: 1,
         name: "Robert".to_string(),
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change name");
     println!("name changed: {:#?}", db);
 
