@@ -1026,6 +1026,35 @@ mod general_tx {
         }
     }
 
+    pub struct SalesReceiptEmpTxTemplate<T, Ctx>
+    where
+        T: SalesReceiptTransaction<Ctx>,
+    {
+        base: T,
+        phantom: PhantomData<Ctx>,
+    }
+    impl<T, Ctx> SalesReceiptEmpTxTemplate<T, Ctx>
+    where
+        T: SalesReceiptTransaction<Ctx>,
+    {
+        pub fn new(base: T) -> Self {
+            SalesReceiptEmpTxTemplate {
+                base,
+                phantom: PhantomData,
+            }
+        }
+    }
+    impl<T, Ctx> Transaction<Ctx> for SalesReceiptEmpTxTemplate<T, Ctx>
+    where
+        T: SalesReceiptTransaction<Ctx>,
+    {
+        type Item = ();
+
+        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
+            SalesReceiptTransaction::<Ctx>::execute(&self.base)
+        }
+    }
+
     pub trait SalesReceiptEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_date(&self) -> NaiveDate;
@@ -1058,6 +1087,14 @@ mod general_tx {
     }
     // blanket implementation
     impl<Ctx, T> SalesReceiptTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> + SalesReceiptEmployee {}
+    impl<T, Ctx> From<T> for SalesReceiptEmpTxTemplate<T, Ctx>
+    where
+        T: SalesReceiptTransaction<Ctx>,
+    {
+        fn from(base: T) -> Self {
+            SalesReceiptEmpTxTemplate::new(base)
+        }
+    }
 
     pub trait NameChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
@@ -3046,12 +3083,13 @@ fn main() {
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = SalesReceiptTransactionImpl {
+    let req: SalesReceiptEmpTxTemplate<_, _> = SalesReceiptTransactionImpl {
         db: db.clone(),
         emp_id: 3,
         date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
         amount: 1000.00,
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("sales receipt");
 
     let req = AddSalariedEmployeeTransactionImpl {
