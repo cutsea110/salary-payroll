@@ -826,6 +826,35 @@ mod general_tx {
         }
     }
 
+    pub struct AddCommissionedEmpTxTemplate<T, Ctx>
+    where
+        T: AddCommissionedEmployeeTransaction<Ctx>,
+    {
+        base: T,
+        phantom: PhantomData<Ctx>,
+    }
+    impl<T, Ctx> AddCommissionedEmpTxTemplate<T, Ctx>
+    where
+        T: AddCommissionedEmployeeTransaction<Ctx>,
+    {
+        pub fn new(base: T) -> Self {
+            AddCommissionedEmpTxTemplate {
+                base,
+                phantom: PhantomData,
+            }
+        }
+    }
+    impl<T, Ctx> Transaction<Ctx> for AddCommissionedEmpTxTemplate<T, Ctx>
+    where
+        T: AddCommissionedEmployeeTransaction<Ctx>,
+    {
+        type Item = EmployeeId;
+
+        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
+            AddCommissionedEmployeeTransaction::<Ctx>::execute(&self.base)
+        }
+    }
+
     pub trait CommissionedEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_name(&self) -> &str;
@@ -865,6 +894,14 @@ mod general_tx {
     impl<T, Ctx> AddCommissionedEmployeeTransaction<Ctx> for T where
         T: AddEmployeeTransaction<Ctx> + CommissionedEmployee
     {
+    }
+    impl<T, Ctx> From<T> for AddCommissionedEmpTxTemplate<T, Ctx>
+    where
+        T: AddCommissionedEmployeeTransaction<Ctx>,
+    {
+        fn from(base: T) -> Self {
+            AddCommissionedEmpTxTemplate::new(base)
+        }
     }
 
     pub trait DeletableEmployee {
@@ -2921,14 +2958,15 @@ fn main() {
     };
     let _ = req.execute().run(&mut ()).expect("time card");
 
-    let req = AddCommissionedEmployeeTransactionImpl {
+    let req: AddCommissionedEmpTxTemplate<_, _> = AddCommissionedEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 3,
         name: "Lance".to_string(),
         address: "Home".to_string(),
         salary: 2500.00,
         commission_rate: 3.2,
-    };
+    }
+    .into();
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
