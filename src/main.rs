@@ -1740,6 +1740,35 @@ mod affiliation_tx {
         }
     }
 
+    pub struct UnionChgMembTxTemplate<T, Ctx>
+    where
+        T: ChangeUnionMemberTransaction<Ctx>,
+    {
+        base: T,
+        phantom: PhantomData<Ctx>,
+    }
+    impl<T, Ctx> UnionChgMembTxTemplate<T, Ctx>
+    where
+        T: ChangeUnionMemberTransaction<Ctx>,
+    {
+        pub fn new(base: T) -> Self {
+            UnionChgMembTxTemplate {
+                base,
+                phantom: PhantomData,
+            }
+        }
+    }
+    impl<T, Ctx> Transaction<Ctx> for UnionChgMembTxTemplate<T, Ctx>
+    where
+        T: ChangeUnionMemberTransaction<Ctx>,
+    {
+        type Item = ();
+
+        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
+            ChangeUnionMemberTransaction::<Ctx>::execute(&self.base)
+        }
+    }
+
     pub trait UnionChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_member_id(&self) -> MemberId;
@@ -1769,6 +1798,14 @@ mod affiliation_tx {
     impl<T, Ctx> ChangeUnionMemberTransaction<Ctx> for T where
         T: ChangeAffiliationTransaction<Ctx> + UnionChangeableEmployee
     {
+    }
+    impl<T, Ctx> From<T> for UnionChgMembTxTemplate<T, Ctx>
+    where
+        T: ChangeUnionMemberTransaction<Ctx>,
+    {
+        fn from(base: T) -> Self {
+            UnionChgMembTxTemplate::new(base)
+        }
     }
 
     pub trait NoAffiliationChangeableEmployee {
@@ -3501,12 +3538,13 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("change hold");
     println!("change hold: {:#?}", db);
 
-    let req = ChangeUnionMemberTransactionImpl {
+    let req: UnionChgMembTxTemplate<_, _> = ChangeUnionMemberTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         member_id: 7734,
         dues: 99.42,
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change union member");
     println!("change union member: {:#?}", db);
 
