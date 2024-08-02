@@ -957,6 +957,35 @@ mod general_tx {
         }
     }
 
+    pub struct TimeCardEmpTxTemplate<T, Ctx>
+    where
+        T: TimeCardTransaction<Ctx>,
+    {
+        base: T,
+        phantom: PhantomData<Ctx>,
+    }
+    impl<T, Ctx> TimeCardEmpTxTemplate<T, Ctx>
+    where
+        T: TimeCardTransaction<Ctx>,
+    {
+        pub fn new(base: T) -> Self {
+            TimeCardEmpTxTemplate {
+                base,
+                phantom: PhantomData,
+            }
+        }
+    }
+    impl<T, Ctx> Transaction<Ctx> for TimeCardEmpTxTemplate<T, Ctx>
+    where
+        T: TimeCardTransaction<Ctx>,
+    {
+        type Item = ();
+
+        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
+            TimeCardTransaction::<Ctx>::execute(&self.base)
+        }
+    }
+
     pub trait TimeCardEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_date(&self) -> NaiveDate;
@@ -988,6 +1017,14 @@ mod general_tx {
     }
     // blanket implementation
     impl<Ctx, T> TimeCardTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> + TimeCardEmployee {}
+    impl<T, Ctx> From<T> for TimeCardEmpTxTemplate<T, Ctx>
+    where
+        T: TimeCardTransaction<Ctx>,
+    {
+        fn from(base: T) -> Self {
+            TimeCardEmpTxTemplate::new(base)
+        }
+    }
 
     pub trait SalesReceiptEmployee {
         fn get_emp_id(&self) -> EmployeeId;
@@ -2987,12 +3024,13 @@ fn main() {
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = TimeCardTransactionImpl {
+    let req: TimeCardEmpTxTemplate<_, _> = TimeCardTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
         hours: 8.0,
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("time card");
 
     let req: AddCommissionedEmpTxTemplate<_, _> = AddCommissionedEmployeeTransactionImpl {
