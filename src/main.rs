@@ -1454,9 +1454,41 @@ mod classification_tx {
 use classification_tx::*;
 
 mod method_tx {
+    use std::marker::PhantomData;
+
     use crate::domain::EmployeeId;
     use crate::method::{DirectMethod, HoldMethod, MailMethod};
+    use crate::tx_base::Transaction;
     use crate::tx_base::{ChangeMethodTransaction, EmployeeUsecaseError};
+
+    pub struct DirectChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeDirectTransaction<Ctx>,
+    {
+        base: T,
+        phantom: PhantomData<Ctx>,
+    }
+    impl<T, Ctx> DirectChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeDirectTransaction<Ctx>,
+    {
+        pub fn new(base: T) -> Self {
+            DirectChgEmpTxTemplate {
+                base,
+                phantom: PhantomData,
+            }
+        }
+    }
+    impl<T, Ctx> Transaction<Ctx> for DirectChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeDirectTransaction<Ctx>,
+    {
+        type Item = ();
+
+        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
+            ChangeDirectTransaction::<Ctx>::execute(&self.base)
+        }
+    }
 
     pub trait DirectChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
@@ -1484,6 +1516,14 @@ mod method_tx {
     impl<T, Ctx> ChangeDirectTransaction<Ctx> for T where
         T: ChangeMethodTransaction<Ctx> + DirectChangeableEmployee
     {
+    }
+    impl<T, Ctx> From<T> for DirectChgEmpTxTemplate<T, Ctx>
+    where
+        T: ChangeDirectTransaction<Ctx>,
+    {
+        fn from(base: T) -> Self {
+            DirectChgEmpTxTemplate::new(base)
+        }
     }
 
     pub trait MailChangeableEmployee {
@@ -3321,12 +3361,13 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("change salary");
     println!("change salary: {:#?}", db);
 
-    let req = ChangeDirectTransactionImpl {
+    let req: DirectChgEmpTxTemplate<_, _> = ChangeDirectTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         bank: "mufg".to_string(),
         account: "1234567".to_string(),
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change direct");
     println!("change direct: {:#?}", db);
 
