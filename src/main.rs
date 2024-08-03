@@ -3678,17 +3678,19 @@ fn main() {
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
-    let req = PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 7, 29).unwrap(),
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
-    let req = PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 7, 31).unwrap(),
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
@@ -3711,10 +3713,11 @@ fn main() {
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
@@ -3727,10 +3730,11 @@ fn main() {
     .into();
     let _ = req.execute().run(&mut ()).expect("time card");
 
-    let req = PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
@@ -3743,10 +3747,11 @@ fn main() {
     .into();
     let _ = req.execute().run(&mut ()).expect("time card");
 
-    let req = PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(), // Friday
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
@@ -3759,17 +3764,19 @@ fn main() {
     .into();
     let _ = req.execute().run(&mut ()).expect("time card");
 
-    let req = PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
-    let req = PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 8, 8).unwrap(), // Thursday
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
@@ -3784,10 +3791,11 @@ fn main() {
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
@@ -3800,10 +3808,11 @@ fn main() {
     .into();
     let _ = req.execute().run(&mut ()).expect("service charge");
 
-    let req = PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
-    };
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 }
