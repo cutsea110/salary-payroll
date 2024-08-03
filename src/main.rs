@@ -1374,6 +1374,7 @@ impl EmployeeDao<()> for MockDb {
     }
 }
 
+#[derive(Debug, Clone)]
 struct AddSalariedEmployeeTransactionImpl {
     db: MockDb,
 
@@ -1402,6 +1403,7 @@ impl SalaryEmployee for AddSalariedEmployeeTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct AddHourlyEmployeeTransactionImpl {
     db: MockDb,
 
@@ -1430,6 +1432,7 @@ impl HourlyEmployee for AddHourlyEmployeeTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct AddCommissionedEmployeeTransactionImpl {
     db: MockDb,
 
@@ -1462,6 +1465,7 @@ impl CommissionedEmployee for AddCommissionedEmployeeTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct DeleteEmployeeTransactionImpl {
     db: MockDb,
 
@@ -1478,6 +1482,7 @@ impl DeletableEmployee for DeleteEmployeeTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct TimeCardTransactionImpl {
     db: MockDb,
 
@@ -1502,6 +1507,7 @@ impl TimeCardEmployee for TimeCardTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct SalesReceiptTransactionImpl {
     db: MockDb,
 
@@ -1526,6 +1532,7 @@ impl SalesReceiptEmployee for SalesReceiptTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ServiceChargeTransactionImpl {
     db: MockDb,
 
@@ -1550,6 +1557,7 @@ impl ServiceChargeableMember for ServiceChargeTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ChangeNameTransactionImpl {
     db: MockDb,
 
@@ -1570,6 +1578,7 @@ impl NameChangeableEmployee for ChangeNameTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ChangeAddressTransactionImpl {
     db: MockDb,
 
@@ -1590,6 +1599,7 @@ impl AddressChangeableEmployee for ChangeAddressTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ChangeSalaryTransactionImpl {
     db: MockDb,
 
@@ -1610,6 +1620,7 @@ impl SalaryChangeableEmployee for ChangeSalaryTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ChangeHourlyTransactionImpl {
     db: MockDb,
 
@@ -1630,6 +1641,7 @@ impl HourlyChangeableEmployee for ChangeHourlyTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ChangeCommissionedTransactionImpl {
     db: MockDb,
 
@@ -1654,6 +1666,7 @@ impl CommissionedChangeableEmployee for ChangeCommissionedTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ChangeDirectTransactionImpl {
     db: MockDb,
 
@@ -1678,6 +1691,7 @@ impl DirectChangeableEmployee for ChangeDirectTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ChangeMailTransactionImpl {
     db: MockDb,
 
@@ -1698,6 +1712,7 @@ impl MailChangeableEmployee for ChangeMailTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ChangeHoldTransactionImpl {
     db: MockDb,
 
@@ -1714,6 +1729,7 @@ impl HoldChangeableEmployee for ChangeHoldTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ChangeUnionMemberTransactionImpl {
     db: MockDb,
 
@@ -1738,6 +1754,7 @@ impl UnionChangeableEmployee for ChangeUnionMemberTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct ChangeNoMemberTransactionImpl {
     db: MockDb,
 
@@ -1754,6 +1771,7 @@ impl NoAffiliationChangeableEmployee for ChangeNoMemberTransactionImpl {
     }
 }
 
+#[derive(Debug, Clone)]
 struct PaydayTransactionImpl {
     db: MockDb,
 
@@ -1767,6 +1785,168 @@ impl HaveEmployeeDao<()> for PaydayTransactionImpl {
 impl PayableEmployee for PaydayTransactionImpl {
     fn get_pay_date(&self) -> NaiveDate {
         self.pay_date
+    }
+}
+
+#[derive(Debug, Clone)]
+enum TranSrc {
+    AddSalaryEmp(AddSalariedEmployeeTransactionImpl),
+    AddHourlyEmp(AddHourlyEmployeeTransactionImpl),
+    AddCommissionedEmp(AddCommissionedEmployeeTransactionImpl),
+    DelEmp(DeleteEmployeeTransactionImpl),
+    TimeCard(TimeCardTransactionImpl),
+    SalesReceipt(SalesReceiptTransactionImpl),
+    ServiceCharge(ServiceChargeTransactionImpl),
+    ChangeName(ChangeNameTransactionImpl),
+    ChangeAddress(ChangeAddressTransactionImpl),
+    ChangeSalary(ChangeSalaryTransactionImpl),
+    ChangeHourly(ChangeHourlyTransactionImpl),
+    ChangeCommissioned(ChangeCommissionedTransactionImpl),
+    ChangeDirect(ChangeDirectTransactionImpl),
+    ChangeMail(ChangeMailTransactionImpl),
+    ChangeHold(ChangeHoldTransactionImpl),
+    ChangeUnionMember(ChangeUnionMemberTransactionImpl),
+    ChangeNoMember(ChangeNoMemberTransactionImpl),
+    Payday(PaydayTransactionImpl),
+}
+impl TranSrc {
+    pub fn from_tran_with(tran: Tran, db: MockDb) -> TranSrc {
+        match tran {
+            Tran::AddSalaryEmp {
+                emp_id,
+                name,
+                address,
+                salary,
+            } => TranSrc::AddSalaryEmp(AddSalariedEmployeeTransactionImpl {
+                db,
+                emp_id,
+                name,
+                address,
+                salary,
+            }),
+            Tran::AddHourlyEmp {
+                emp_id,
+                name,
+                address,
+                hourly_rate,
+            } => TranSrc::AddHourlyEmp(AddHourlyEmployeeTransactionImpl {
+                db,
+                emp_id,
+                name,
+                address,
+                hourly_rate,
+            }),
+            Tran::AddCommissionedEmp {
+                emp_id,
+                name,
+                address,
+                salary,
+                commission_rate,
+            } => TranSrc::AddCommissionedEmp(AddCommissionedEmployeeTransactionImpl {
+                db,
+                emp_id,
+                name,
+                address,
+                salary,
+                commission_rate,
+            }),
+            Tran::DelEmp { emp_id } => {
+                TranSrc::DelEmp(DeleteEmployeeTransactionImpl { db, emp_id })
+            }
+            Tran::TimeCard {
+                emp_id,
+                date,
+                hours,
+            } => TranSrc::TimeCard(TimeCardTransactionImpl {
+                db,
+                emp_id,
+                date,
+                hours,
+            }),
+            Tran::SalesReceipt {
+                emp_id,
+                date,
+                amount,
+            } => TranSrc::SalesReceipt(SalesReceiptTransactionImpl {
+                db,
+                emp_id,
+                date,
+                amount,
+            }),
+            Tran::ServiceCharge {
+                member_id,
+                date,
+                amount,
+            } => TranSrc::ServiceCharge(ServiceChargeTransactionImpl {
+                db,
+                member_id,
+                date,
+                amount,
+            }),
+            Tran::ChgName { emp_id, name } => {
+                TranSrc::ChangeName(ChangeNameTransactionImpl { db, emp_id, name })
+            }
+            Tran::ChgAddress { emp_id, address } => {
+                TranSrc::ChangeAddress(ChangeAddressTransactionImpl {
+                    db,
+                    emp_id,
+                    address,
+                })
+            }
+            Tran::ChgSalaried { emp_id, salary } => {
+                TranSrc::ChangeSalary(ChangeSalaryTransactionImpl { db, emp_id, salary })
+            }
+            Tran::ChgHourly {
+                emp_id,
+                hourly_rate,
+            } => TranSrc::ChangeHourly(ChangeHourlyTransactionImpl {
+                db,
+                emp_id,
+                hourly_rate,
+            }),
+            Tran::ChgCommissioned {
+                emp_id,
+                salary,
+                commission_rate,
+            } => TranSrc::ChangeCommissioned(ChangeCommissionedTransactionImpl {
+                db,
+                emp_id,
+                salary,
+                commission_rate,
+            }),
+            Tran::ChgHold { emp_id } => {
+                TranSrc::ChangeHold(ChangeHoldTransactionImpl { db, emp_id })
+            }
+            Tran::ChgDirect {
+                emp_id,
+                bank,
+                account,
+            } => TranSrc::ChangeDirect(ChangeDirectTransactionImpl {
+                db,
+                emp_id,
+                bank,
+                account,
+            }),
+            Tran::ChgMail { emp_id, address } => TranSrc::ChangeMail(ChangeMailTransactionImpl {
+                db,
+                emp_id,
+                address,
+            }),
+            Tran::ChgMember {
+                emp_id,
+                member_id,
+                dues,
+            } => TranSrc::ChangeUnionMember(ChangeUnionMemberTransactionImpl {
+                db,
+                emp_id,
+                member_id,
+                dues,
+            }),
+            Tran::ChgNoMember { emp_id } => {
+                TranSrc::ChangeNoMember(ChangeNoMemberTransactionImpl { db, emp_id })
+            }
+            Tran::Payday { pay_date } => TranSrc::Payday(PaydayTransactionImpl { db, pay_date }),
+        }
     }
 }
 
@@ -1856,7 +2036,7 @@ pub mod parser {
             emp_id: EmployeeId,
         },
         Payday {
-            date: NaiveDate,
+            pay_date: NaiveDate,
         },
     }
     pub fn transaction() -> impl Parser<Item = Tran> {
@@ -2774,7 +2954,7 @@ pub mod parser {
         let prefix = keyword("Payday").skip(spaces());
         let date = date().with(spaces());
 
-        prefix.skip(date).map(|date| Tran::Payday { date })
+        prefix.skip(date).map(|pay_date| Tran::Payday { pay_date })
     }
     #[cfg(test)]
     mod test_payday {
@@ -2789,7 +2969,7 @@ pub mod parser {
                 result,
                 Ok((
                     Tran::Payday {
-                        date: NaiveDate::from_ymd_opt(2021, 1, 1).unwrap()
+                        pay_date: NaiveDate::from_ymd_opt(2021, 1, 1).unwrap()
                     },
                     ""
                 ))
@@ -2797,6 +2977,7 @@ pub mod parser {
         }
     }
 }
+use parser::*;
 
 fn main() {
     let db = MockDb {
