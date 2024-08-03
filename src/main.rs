@@ -89,7 +89,7 @@ mod domain {
 
     pub trait PaymentClassification: DynClone + Debug {
         fn as_any_mut(&mut self) -> &mut dyn Any;
-        fn calculate_pay(&self, pc: &PayCheck) -> f64;
+        fn calculate_pay(&self, pc: &PayCheck) -> f32;
     }
     dyn_clone::clone_trait_object!(PaymentClassification);
 
@@ -108,7 +108,7 @@ mod domain {
     pub trait Affiliation: DynClone + Debug {
         fn as_any(&self) -> &dyn Any;
         fn as_any_mut(&mut self) -> &mut dyn Any;
-        fn calculate_deductions(&self, _pc: &PayCheck) -> f64 {
+        fn calculate_deductions(&self, _pc: &PayCheck) -> f32 {
             0.0
         }
     }
@@ -118,9 +118,9 @@ mod domain {
     pub struct PayCheck {
         period: RangeInclusive<NaiveDate>,
 
-        gross_pay: f64,
-        deductions: f64,
-        net_pay: f64,
+        gross_pay: f32,
+        deductions: f32,
+        net_pay: f32,
     }
     impl PayCheck {
         pub fn new(period: RangeInclusive<NaiveDate>) -> Self {
@@ -134,13 +134,13 @@ mod domain {
         pub fn get_pay_period(&self) -> RangeInclusive<NaiveDate> {
             self.period.clone()
         }
-        pub fn set_gross_pay(&mut self, gross_pay: f64) {
+        pub fn set_gross_pay(&mut self, gross_pay: f32) {
             self.gross_pay = gross_pay;
         }
-        pub fn set_deductions(&mut self, deductions: f64) {
+        pub fn set_deductions(&mut self, deductions: f32) {
             self.deductions = deductions;
         }
-        pub fn set_net_pay(&mut self, net_pay: f64) {
+        pub fn set_net_pay(&mut self, net_pay: f32) {
             self.net_pay = net_pay;
         }
     }
@@ -211,31 +211,31 @@ mod classification {
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct SalariedClassification {
-        salary: f64,
+        salary: f32,
     }
     impl PaymentClassification for SalariedClassification {
         fn as_any_mut(&mut self) -> &mut dyn Any {
             self
         }
-        fn calculate_pay(&self, _pc: &PayCheck) -> f64 {
+        fn calculate_pay(&self, _pc: &PayCheck) -> f32 {
             self.salary
         }
     }
     impl SalariedClassification {
-        pub fn new(salary: f64) -> Self {
+        pub fn new(salary: f32) -> Self {
             Self { salary }
         }
     }
     #[derive(Debug, Clone, PartialEq)]
     pub struct HourlyClassification {
-        hourly_rate: f64,
+        hourly_rate: f32,
         timecards: Vec<TimeCard>,
     }
     impl PaymentClassification for HourlyClassification {
         fn as_any_mut(&mut self) -> &mut dyn Any {
             self
         }
-        fn calculate_pay(&self, pc: &PayCheck) -> f64 {
+        fn calculate_pay(&self, pc: &PayCheck) -> f32 {
             let pay_period = pc.get_pay_period();
             let mut total_pay = 0.0;
             for tc in self.timecards.iter() {
@@ -247,7 +247,7 @@ mod classification {
         }
     }
     impl HourlyClassification {
-        pub fn new(hourly_rate: f64) -> Self {
+        pub fn new(hourly_rate: f32) -> Self {
             Self {
                 hourly_rate,
                 timecards: vec![],
@@ -256,7 +256,7 @@ mod classification {
         pub fn add_timecard(&mut self, tc: TimeCard) {
             self.timecards.push(tc);
         }
-        pub fn calculate_pay_for_timecard(&self, tc: &TimeCard) -> f64 {
+        pub fn calculate_pay_for_timecard(&self, tc: &TimeCard) -> f32 {
             let hours = tc.get_hours();
             let overtime = (hours - 8.0).max(0.0);
             let straight_time = hours - overtime;
@@ -265,15 +265,15 @@ mod classification {
     }
     #[derive(Debug, Clone, PartialEq)]
     pub struct CommissionedClassification {
-        salary: f64,
-        commission_rate: f64,
+        salary: f32,
+        commission_rate: f32,
         sales_receipts: Vec<SalesReceipt>,
     }
     impl PaymentClassification for CommissionedClassification {
         fn as_any_mut(&mut self) -> &mut dyn Any {
             self
         }
-        fn calculate_pay(&self, pc: &PayCheck) -> f64 {
+        fn calculate_pay(&self, pc: &PayCheck) -> f32 {
             let mut total_pay = 0.0;
             let pay_period = pc.get_pay_period();
             for sr in self.sales_receipts.iter() {
@@ -285,7 +285,7 @@ mod classification {
         }
     }
     impl CommissionedClassification {
-        pub fn new(salary: f64, commission_rate: f64) -> Self {
+        pub fn new(salary: f32, commission_rate: f32) -> Self {
             Self {
                 salary,
                 commission_rate,
@@ -295,7 +295,7 @@ mod classification {
         pub fn add_sales_receipt(&mut self, sr: SalesReceipt) {
             self.sales_receipts.push(sr);
         }
-        pub fn calculate_pay_for_sales_receipt(&self, sr: &SalesReceipt) -> f64 {
+        pub fn calculate_pay_for_sales_receipt(&self, sr: &SalesReceipt) -> f32 {
             self.commission_rate * sr.get_amount()
         }
     }
@@ -303,16 +303,16 @@ mod classification {
     #[derive(Debug, Clone, PartialEq)]
     pub struct TimeCard {
         date: NaiveDate,
-        hours: f64,
+        hours: f32,
     }
     impl TimeCard {
-        pub fn new(date: NaiveDate, hours: f64) -> Self {
+        pub fn new(date: NaiveDate, hours: f32) -> Self {
             Self { date, hours }
         }
         pub fn get_date(&self) -> NaiveDate {
             self.date
         }
-        pub fn get_hours(&self) -> f64 {
+        pub fn get_hours(&self) -> f32 {
             self.hours
         }
     }
@@ -320,16 +320,16 @@ mod classification {
     #[derive(Debug, Clone, PartialEq)]
     pub struct SalesReceipt {
         date: NaiveDate,
-        amount: f64,
+        amount: f32,
     }
     impl SalesReceipt {
-        pub fn new(date: NaiveDate, amount: f64) -> Self {
+        pub fn new(date: NaiveDate, amount: f32) -> Self {
             Self { date, amount }
         }
         pub fn get_date(&self) -> NaiveDate {
             self.date
         }
-        pub fn get_amount(&self) -> f64 {
+        pub fn get_amount(&self) -> f32 {
             self.amount
         }
     }
@@ -432,12 +432,12 @@ mod affiliation {
     #[derive(Debug, Clone, PartialEq)]
     pub struct UnionAffiliation {
         member_id: MemberId,
-        dues: f64,
+        dues: f32,
 
         service_charges: Vec<ServiceCharge>,
     }
     impl UnionAffiliation {
-        pub fn new(member_id: MemberId, dues: f64) -> Self {
+        pub fn new(member_id: MemberId, dues: f32) -> Self {
             Self {
                 member_id,
                 dues,
@@ -447,7 +447,7 @@ mod affiliation {
         pub fn get_member_id(&self) -> MemberId {
             self.member_id
         }
-        pub fn get_dues(&self) -> f64 {
+        pub fn get_dues(&self) -> f32 {
             self.dues
         }
         pub fn add_service_charge(&mut self, sc: ServiceCharge) {
@@ -461,7 +461,7 @@ mod affiliation {
         fn as_any_mut(&mut self) -> &mut dyn Any {
             self
         }
-        fn calculate_deductions(&self, pc: &PayCheck) -> f64 {
+        fn calculate_deductions(&self, pc: &PayCheck) -> f32 {
             let mut total_deductions = 0.0;
             let pay_period = pc.get_pay_period();
             for d in pc.get_pay_period().start().iter_days() {
@@ -494,16 +494,16 @@ mod affiliation {
     #[derive(Debug, Clone, PartialEq)]
     pub struct ServiceCharge {
         date: NaiveDate,
-        amount: f64,
+        amount: f32,
     }
     impl ServiceCharge {
-        pub fn new(date: NaiveDate, amount: f64) -> Self {
+        pub fn new(date: NaiveDate, amount: f32) -> Self {
             Self { date, amount }
         }
         pub fn get_date(&self) -> NaiveDate {
             self.date
         }
-        pub fn get_amount(&self) -> f64 {
+        pub fn get_amount(&self) -> f32 {
             self.amount
         }
     }
@@ -679,7 +679,7 @@ mod general_tx {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_name(&self) -> &str;
         fn get_address(&self) -> &str;
-        fn get_salary(&self) -> f64;
+        fn get_salary(&self) -> f32;
     }
     pub trait AddSalaryEmployeeTransaction<Ctx>:
         AddEmployeeTransaction<Ctx> + SalaryEmployee
@@ -716,7 +716,7 @@ mod general_tx {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_name(&self) -> &str;
         fn get_address(&self) -> &str;
-        fn get_hourly_rate(&self) -> f64;
+        fn get_hourly_rate(&self) -> f32;
     }
     pub trait AddHourlyEmployeeTransaction<Ctx>:
         AddEmployeeTransaction<Ctx> + HourlyEmployee
@@ -753,8 +753,8 @@ mod general_tx {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_name(&self) -> &str;
         fn get_address(&self) -> &str;
-        fn get_salary(&self) -> f64;
-        fn get_commission_rate(&self) -> f64;
+        fn get_salary(&self) -> f32;
+        fn get_commission_rate(&self) -> f32;
     }
     pub trait AddCommissionedEmployeeTransaction<Ctx>:
         AddEmployeeTransaction<Ctx> + CommissionedEmployee
@@ -809,7 +809,7 @@ mod general_tx {
     pub trait TimeCardEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_date(&self) -> NaiveDate;
-        fn get_hours(&self) -> f64;
+        fn get_hours(&self) -> f32;
     }
     pub trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> + TimeCardEmployee {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
@@ -841,7 +841,7 @@ mod general_tx {
     pub trait SalesReceiptEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_date(&self) -> NaiveDate;
-        fn get_amount(&self) -> f64;
+        fn get_amount(&self) -> f32;
     }
     pub trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> + SalesReceiptEmployee {
         fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
@@ -962,7 +962,7 @@ mod classification_tx {
 
     pub trait SalaryChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
-        fn get_salary(&self) -> f64;
+        fn get_salary(&self) -> f32;
     }
 
     pub trait ChangeSalariedTransaction<Ctx>:
@@ -988,7 +988,7 @@ mod classification_tx {
 
     pub trait HourlyChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
-        fn get_hourly_rate(&self) -> f64;
+        fn get_hourly_rate(&self) -> f32;
     }
     pub trait ChangeHourlyTransaction<Ctx>:
         ChangeClassificationTransaction<Ctx> + HourlyChangeableEmployee
@@ -1013,8 +1013,8 @@ mod classification_tx {
 
     pub trait CommissionedChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
-        fn get_salary(&self) -> f64;
-        fn get_commission_rate(&self) -> f64;
+        fn get_salary(&self) -> f32;
+        fn get_commission_rate(&self) -> f32;
     }
     pub trait ChangeCommissionedTransaction<Ctx>:
         ChangeClassificationTransaction<Ctx> + CommissionedChangeableEmployee
@@ -1136,7 +1136,7 @@ mod affiliation_tx {
     pub trait ServiceChargeableMember {
         fn get_member_id(&self) -> MemberId;
         fn get_date(&self) -> NaiveDate;
-        fn get_amount(&self) -> f64;
+        fn get_amount(&self) -> f32;
     }
     pub trait ServiceChargeTransaction<Ctx>:
         HaveEmployeeDao<Ctx> + ServiceChargeableMember
@@ -1179,7 +1179,7 @@ mod affiliation_tx {
     pub trait UnionChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_member_id(&self) -> MemberId;
-        fn get_dues(&self) -> f64;
+        fn get_dues(&self) -> f32;
     }
     pub trait ChangeUnionMemberTransaction<Ctx>:
         ChangeAffiliationTransaction<Ctx> + UnionChangeableEmployee
@@ -1380,7 +1380,7 @@ struct AddSalariedEmployeeTransactionImpl {
     emp_id: EmployeeId,
     name: String,
     address: String,
-    salary: f64,
+    salary: f32,
 }
 impl HaveEmployeeDao<()> for AddSalariedEmployeeTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
@@ -1397,7 +1397,7 @@ impl SalaryEmployee for AddSalariedEmployeeTransactionImpl {
     fn get_address(&self) -> &str {
         &self.address
     }
-    fn get_salary(&self) -> f64 {
+    fn get_salary(&self) -> f32 {
         self.salary
     }
 }
@@ -1408,7 +1408,7 @@ struct AddHourlyEmployeeTransactionImpl {
     emp_id: EmployeeId,
     name: String,
     address: String,
-    hourly_rate: f64,
+    hourly_rate: f32,
 }
 impl HaveEmployeeDao<()> for AddHourlyEmployeeTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
@@ -1425,7 +1425,7 @@ impl HourlyEmployee for AddHourlyEmployeeTransactionImpl {
     fn get_address(&self) -> &str {
         &self.address
     }
-    fn get_hourly_rate(&self) -> f64 {
+    fn get_hourly_rate(&self) -> f32 {
         self.hourly_rate
     }
 }
@@ -1436,8 +1436,8 @@ struct AddCommissionedEmployeeTransactionImpl {
     emp_id: EmployeeId,
     name: String,
     address: String,
-    salary: f64,
-    commission_rate: f64,
+    salary: f32,
+    commission_rate: f32,
 }
 impl HaveEmployeeDao<()> for AddCommissionedEmployeeTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
@@ -1454,10 +1454,10 @@ impl CommissionedEmployee for AddCommissionedEmployeeTransactionImpl {
     fn get_address(&self) -> &str {
         &self.address
     }
-    fn get_salary(&self) -> f64 {
+    fn get_salary(&self) -> f32 {
         self.salary
     }
-    fn get_commission_rate(&self) -> f64 {
+    fn get_commission_rate(&self) -> f32 {
         self.commission_rate
     }
 }
@@ -1483,7 +1483,7 @@ struct TimeCardTransactionImpl {
 
     emp_id: EmployeeId,
     date: NaiveDate,
-    hours: f64,
+    hours: f32,
 }
 impl HaveEmployeeDao<()> for TimeCardTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
@@ -1497,7 +1497,7 @@ impl TimeCardEmployee for TimeCardTransactionImpl {
     fn get_date(&self) -> NaiveDate {
         self.date
     }
-    fn get_hours(&self) -> f64 {
+    fn get_hours(&self) -> f32 {
         self.hours
     }
 }
@@ -1507,7 +1507,7 @@ struct SalesReceiptTransactionImpl {
 
     emp_id: EmployeeId,
     date: NaiveDate,
-    amount: f64,
+    amount: f32,
 }
 impl HaveEmployeeDao<()> for SalesReceiptTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
@@ -1521,7 +1521,7 @@ impl SalesReceiptEmployee for SalesReceiptTransactionImpl {
     fn get_date(&self) -> NaiveDate {
         self.date
     }
-    fn get_amount(&self) -> f64 {
+    fn get_amount(&self) -> f32 {
         self.amount
     }
 }
@@ -1531,7 +1531,7 @@ struct ServiceChargeTransactionImpl {
 
     member_id: MemberId,
     date: NaiveDate,
-    amount: f64,
+    amount: f32,
 }
 impl HaveEmployeeDao<()> for ServiceChargeTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
@@ -1545,7 +1545,7 @@ impl ServiceChargeableMember for ServiceChargeTransactionImpl {
     fn get_date(&self) -> NaiveDate {
         self.date
     }
-    fn get_amount(&self) -> f64 {
+    fn get_amount(&self) -> f32 {
         self.amount
     }
 }
@@ -1594,7 +1594,7 @@ struct ChangeSalaryTransactionImpl {
     db: MockDb,
 
     emp_id: EmployeeId,
-    salary: f64,
+    salary: f32,
 }
 impl HaveEmployeeDao<()> for ChangeSalaryTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
@@ -1605,7 +1605,7 @@ impl SalaryChangeableEmployee for ChangeSalaryTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
-    fn get_salary(&self) -> f64 {
+    fn get_salary(&self) -> f32 {
         self.salary
     }
 }
@@ -1614,7 +1614,7 @@ struct ChangeHourlyTransactionImpl {
     db: MockDb,
 
     emp_id: EmployeeId,
-    hourly_rate: f64,
+    hourly_rate: f32,
 }
 impl HaveEmployeeDao<()> for ChangeHourlyTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
@@ -1625,7 +1625,7 @@ impl HourlyChangeableEmployee for ChangeHourlyTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
-    fn get_hourly_rate(&self) -> f64 {
+    fn get_hourly_rate(&self) -> f32 {
         self.hourly_rate
     }
 }
@@ -1634,8 +1634,8 @@ struct ChangeCommissionedTransactionImpl {
     db: MockDb,
 
     emp_id: EmployeeId,
-    salary: f64,
-    commission_rate: f64,
+    salary: f32,
+    commission_rate: f32,
 }
 impl HaveEmployeeDao<()> for ChangeCommissionedTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
@@ -1646,10 +1646,10 @@ impl CommissionedChangeableEmployee for ChangeCommissionedTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
-    fn get_salary(&self) -> f64 {
+    fn get_salary(&self) -> f32 {
         self.salary
     }
-    fn get_commission_rate(&self) -> f64 {
+    fn get_commission_rate(&self) -> f32 {
         self.commission_rate
     }
 }
@@ -1719,7 +1719,7 @@ struct ChangeUnionMemberTransactionImpl {
 
     emp_id: EmployeeId,
     member_id: EmployeeId,
-    dues: f64,
+    dues: f32,
 }
 impl HaveEmployeeDao<()> for ChangeUnionMemberTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
@@ -1733,7 +1733,7 @@ impl UnionChangeableEmployee for ChangeUnionMemberTransactionImpl {
     fn get_member_id(&self) -> EmployeeId {
         self.member_id
     }
-    fn get_dues(&self) -> f64 {
+    fn get_dues(&self) -> f32 {
         self.dues
     }
 }
