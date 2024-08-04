@@ -545,8 +545,6 @@ mod tx_base {
         AddUnionMemberFailed(EmployeeDaoError),
         #[error("remove union member failed: {0}")]
         RemoveUnionMemberFailed(EmployeeDaoError),
-        #[error("record paycheck failed: {0}")]
-        RecordPayCheckFailed(EmployeeDaoError),
     }
 
     pub trait Transaction<Ctx> {
@@ -1275,10 +1273,7 @@ mod general_tx {
                         let period = emp.get_pay_period(pay_date);
                         let mut pc = PayCheck::new(period);
                         emp.payday(&mut pc);
-                        self.dao()
-                            .record_paycheck(emp.get_emp_id(), pc)
-                            .run(ctx)
-                            .map_err(EmployeeUsecaseError::RecordPayCheckFailed)?;
+                        let _ = self.dao().record_paycheck(emp.get_emp_id(), pc).run(ctx);
                     }
                 }
                 Ok(())
