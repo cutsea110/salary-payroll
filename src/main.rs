@@ -2368,13 +2368,10 @@ pub mod parser {
 
     fn go_through() -> impl Parser<Item = ()> {
         let comment = char('#').skip(pred(|c| c != '\n').many0().with(char('\n')));
-        spaces().skip(
-            comment
-                .many1()
-                .map(|_| ())
-                .skip(spaces().map(|_| ()))
-                .or(spaces().map(|_| ())),
-        )
+        let space_comment = spaces().skip(comment).map(|_| ());
+        let ignore = space_comment.many1().map(|_| ()).or(spaces().map(|_| ()));
+
+        spaces().skip(ignore).skip(spaces()).map(|_| ())
     }
 
     fn add_salary_emp() -> impl Parser<Item = Tran> {
