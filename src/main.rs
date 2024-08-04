@@ -7,8 +7,7 @@ mod domain {
     use chrono::NaiveDate;
     use core::fmt::Debug;
     use dyn_clone::DynClone;
-    use std::any::Any;
-    use std::ops::RangeInclusive;
+    use std::{any::Any, cell::RefCell, ops::RangeInclusive, rc::Rc};
 
     pub type EmployeeId = u32;
     pub type MemberId = u32;
@@ -18,20 +17,20 @@ mod domain {
         emp_id: EmployeeId,
         name: String,
         address: String,
-        classification: Box<dyn PaymentClassification>,
-        schedule: Box<dyn PaymentSchedule>,
-        method: Box<dyn PaymentMethod>,
-        affiliation: Box<dyn Affiliation>,
+        classification: Rc<RefCell<dyn PaymentClassification>>,
+        schedule: Rc<RefCell<dyn PaymentSchedule>>,
+        method: Rc<RefCell<dyn PaymentMethod>>,
+        affiliation: Rc<RefCell<dyn Affiliation>>,
     }
     impl Employee {
         pub fn new(
             emp_id: EmployeeId,
             name: &str,
             address: &str,
-            classification: Box<dyn PaymentClassification>,
-            schedule: Box<dyn PaymentSchedule>,
-            method: Box<dyn PaymentMethod>,
-            affiliation: Box<dyn Affiliation>,
+            classification: Rc<RefCell<dyn PaymentClassification>>,
+            schedule: Rc<RefCell<dyn PaymentSchedule>>,
+            method: Rc<RefCell<dyn PaymentMethod>>,
+            affiliation: Rc<RefCell<dyn Affiliation>>,
         ) -> Self {
             Self {
                 emp_id,
@@ -44,19 +43,19 @@ mod domain {
             }
         }
         pub fn is_pay_date(&self, date: NaiveDate) -> bool {
-            self.schedule.is_pay_date(date)
+            self.schedule.borrow().is_pay_date(date)
         }
         pub fn get_pay_period(&self, date: NaiveDate) -> RangeInclusive<NaiveDate> {
-            self.schedule.get_pay_period(date)
+            self.schedule.borrow().get_pay_period(date)
         }
         pub fn payday(&self, pc: &mut PayCheck) {
-            let gross_pay = self.classification.calculate_pay(&pc);
-            let deductions = self.affiliation.calculate_deductions(&pc);
+            let gross_pay = self.classification.borrow().calculate_pay(&pc);
+            let deductions = self.affiliation.borrow().calculate_deductions(&pc);
             let net_pay = gross_pay - deductions;
             pc.set_gross_pay(gross_pay);
             pc.set_deductions(deductions);
             pc.set_net_pay(net_pay);
-            self.method.pay(pc);
+            self.method.borrow().pay(pc);
         }
         pub fn get_emp_id(&self) -> EmployeeId {
             self.emp_id
@@ -67,22 +66,25 @@ mod domain {
         pub fn set_address(&mut self, address: &str) {
             self.address = address.to_string();
         }
-        pub fn get_classification(&self) -> Box<dyn PaymentClassification> {
+        pub fn get_classification(&self) -> Rc<RefCell<dyn PaymentClassification>> {
             self.classification.clone()
         }
-        pub fn set_classification(&mut self, classification: Box<dyn PaymentClassification>) {
+        pub fn set_classification(
+            &mut self,
+            classification: Rc<RefCell<dyn PaymentClassification>>,
+        ) {
             self.classification = classification;
         }
-        pub fn set_schedule(&mut self, schedule: Box<dyn PaymentSchedule>) {
+        pub fn set_schedule(&mut self, schedule: Rc<RefCell<dyn PaymentSchedule>>) {
             self.schedule = schedule;
         }
-        pub fn set_method(&mut self, method: Box<dyn PaymentMethod>) {
+        pub fn set_method(&mut self, method: Rc<RefCell<dyn PaymentMethod>>) {
             self.method = method;
         }
-        pub fn get_affiliation(&self) -> Box<dyn Affiliation> {
+        pub fn get_affiliation(&self) -> Rc<RefCell<dyn Affiliation>> {
             self.affiliation.clone()
         }
-        pub fn set_affiliation(&mut self, affiliation: Box<dyn Affiliation>) {
+        pub fn set_affiliation(&mut self, affiliation: Rc<RefCell<dyn Affiliation>>) {
             self.affiliation = affiliation;
         }
     }
@@ -510,6 +512,7 @@ mod affiliation {
 }
 
 mod tx_base {
+    use std::{cell::RefCell, rc::Rc};
     use thiserror::Error;
     use tx_rs::Tx;
 
@@ -550,14 +553,14 @@ mod tx_base {
             emp_id: EmployeeId,
             name: &str,
             address: &str,
-            classification: Box<dyn PaymentClassification>,
-            schedule: Box<dyn PaymentSchedule>,
+            classification: Rc<RefCell<dyn PaymentClassification>>,
+            schedule: Rc<RefCell<dyn PaymentSchedule>>,
         ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
         {
-            let method = Box::new(HoldMethod);
-            let affiliation = Box::new(NoAffiliation);
+            let method = Rc::new(RefCell::new(HoldMethod));
+            let affiliation = Rc::new(RefCell::new(NoAffiliation));
             let emp = Employee::new(
                 emp_id,
                 name,
@@ -606,8 +609,8 @@ mod tx_base {
         fn execute<'a>(
             &'a self,
             emp_id: EmployeeId,
-            classification: Box<dyn PaymentClassification>,
-            schedule: Box<dyn PaymentSchedule>,
+            classification: Rc<RefCell<dyn PaymentClassification>>,
+            schedule: Rc<RefCell<dyn PaymentSchedule>>,
         ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -626,7 +629,7 @@ mod tx_base {
         fn execute<'a>(
             &'a self,
             emp_id: EmployeeId,
-            method: Box<dyn PaymentMethod>,
+            method: Rc<RefCell<dyn PaymentMethod>>,
         ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -645,7 +648,7 @@ mod tx_base {
             &'a self,
             emp_id: EmployeeId,
             record_membership: F,
-            affiliation: Box<dyn Affiliation>,
+            affiliation: Rc<RefCell<dyn Affiliation>>,
         ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError>,
@@ -664,6 +667,7 @@ mod tx_base {
 
 mod general_tx {
     use chrono::NaiveDate;
+    use std::{cell::RefCell, rc::Rc};
     use tx_rs::Tx;
 
     use crate::classification::{
@@ -693,8 +697,9 @@ mod general_tx {
             let emp_id = self.get_emp_id();
             let name = self.get_name();
             let address = self.get_address();
-            let classification = Box::new(SalariedClassification::new(self.get_salary()));
-            let schedule = Box::new(MonthlySchedule);
+            let classification =
+                Rc::new(RefCell::new(SalariedClassification::new(self.get_salary())));
+            let schedule = Rc::new(RefCell::new(MonthlySchedule));
 
             AddEmployeeTransaction::<Ctx>::execute(
                 self,
@@ -730,8 +735,10 @@ mod general_tx {
             let emp_id = self.get_emp_id();
             let name = self.get_name();
             let address = self.get_address();
-            let classification = Box::new(HourlyClassification::new(self.get_hourly_rate()));
-            let schedule = Box::new(WeeklySchedule);
+            let classification = Rc::new(RefCell::new(HourlyClassification::new(
+                self.get_hourly_rate(),
+            )));
+            let schedule = Rc::new(RefCell::new(WeeklySchedule));
 
             AddEmployeeTransaction::<Ctx>::execute(
                 self,
@@ -768,11 +775,11 @@ mod general_tx {
             let emp_id = self.get_emp_id();
             let name = self.get_name();
             let address = self.get_address();
-            let classification = Box::new(CommissionedClassification::new(
+            let classification = Rc::new(RefCell::new(CommissionedClassification::new(
                 self.get_salary(),
                 self.get_commission_rate(),
-            ));
-            let schedule = Box::new(BiweeklySchedule);
+            )));
+            let schedule = Rc::new(RefCell::new(BiweeklySchedule));
 
             AddEmployeeTransaction::<Ctx>::execute(
                 self,
@@ -819,15 +826,15 @@ mod general_tx {
                     .fetch(self.get_emp_id())
                     .run(ctx)
                     .map_err(EmployeeUsecaseError::NotFound)?;
-                let mut binding = emp.get_classification();
-                let hourly = binding
+                emp.get_classification()
+                    .borrow_mut()
                     .as_any_mut()
                     .downcast_mut::<HourlyClassification>()
                     .ok_or(EmployeeUsecaseError::NotHourlySalary(format!(
                         "emp_id: {}",
                         self.get_emp_id()
-                    )))?;
-                hourly.add_timecard(TimeCard::new(self.get_date(), self.get_hours()));
+                    )))?
+                    .add_timecard(TimeCard::new(self.get_date(), self.get_hours()));
                 self.dao()
                     .update(emp)
                     .run(ctx)
@@ -851,15 +858,14 @@ mod general_tx {
                     .fetch(self.get_emp_id())
                     .run(ctx)
                     .map_err(EmployeeUsecaseError::NotFound)?;
-                let mut binding = emp.get_classification();
-                let commissioned = binding
+                emp.get_classification()
+                    .borrow_mut()
                     .as_any_mut()
                     .downcast_mut::<CommissionedClassification>()
                     .ok_or(EmployeeUsecaseError::NotCommissionedSalary(format!(
                         "emp_id: {}",
                         self.get_emp_id()
-                    )))?;
-                commissioned
+                    )))?
                     .add_sales_receipt(SalesReceipt::new(self.get_date(), self.get_amount()));
                 self.dao()
                     .update(emp)
@@ -953,6 +959,8 @@ mod general_tx {
 use general_tx::*;
 
 mod classification_tx {
+    use std::{cell::RefCell, rc::Rc};
+
     use crate::classification::{
         CommissionedClassification, HourlyClassification, SalariedClassification,
     };
@@ -975,8 +983,8 @@ mod classification_tx {
             ChangeClassificationTransaction::<Ctx>::execute(
                 self,
                 self.get_emp_id(),
-                Box::new(SalariedClassification::new(self.get_salary())),
-                Box::new(MonthlySchedule),
+                Rc::new(RefCell::new(SalariedClassification::new(self.get_salary()))),
+                Rc::new(RefCell::new(MonthlySchedule)),
             )
         }
     }
@@ -1000,8 +1008,10 @@ mod classification_tx {
             ChangeClassificationTransaction::<Ctx>::execute(
                 self,
                 self.get_emp_id(),
-                Box::new(HourlyClassification::new(self.get_hourly_rate())),
-                Box::new(WeeklySchedule),
+                Rc::new(RefCell::new(HourlyClassification::new(
+                    self.get_hourly_rate(),
+                ))),
+                Rc::new(RefCell::new(WeeklySchedule)),
             )
         }
     }
@@ -1026,11 +1036,11 @@ mod classification_tx {
             ChangeClassificationTransaction::<Ctx>::execute(
                 self,
                 self.get_emp_id(),
-                Box::new(CommissionedClassification::new(
+                Rc::new(RefCell::new(CommissionedClassification::new(
                     self.get_salary(),
                     self.get_commission_rate(),
-                )),
-                Box::new(BiweeklySchedule),
+                ))),
+                Rc::new(RefCell::new(BiweeklySchedule)),
             )
         }
     }
@@ -1043,6 +1053,8 @@ mod classification_tx {
 use classification_tx::*;
 
 mod method_tx {
+    use std::{cell::RefCell, rc::Rc};
+
     use crate::domain::EmployeeId;
     use crate::method::{DirectMethod, HoldMethod, MailMethod};
     use crate::tx_base::{ChangeMethodTransaction, EmployeeUsecaseError};
@@ -1062,10 +1074,10 @@ mod method_tx {
             ChangeMethodTransaction::<Ctx>::execute(
                 self,
                 self.get_emp_id(),
-                Box::new(DirectMethod::new(
+                Rc::new(RefCell::new(DirectMethod::new(
                     self.get_bank().to_string(),
                     self.get_account().to_string(),
-                )),
+                ))),
             )
         }
     }
@@ -1089,7 +1101,9 @@ mod method_tx {
             ChangeMethodTransaction::<Ctx>::execute(
                 self,
                 self.get_emp_id(),
-                Box::new(MailMethod::new(self.get_address().to_string())),
+                Rc::new(RefCell::new(MailMethod::new(
+                    self.get_address().to_string(),
+                ))),
             )
         }
     }
@@ -1112,7 +1126,7 @@ mod method_tx {
             ChangeMethodTransaction::<Ctx>::execute(
                 self,
                 self.get_emp_id(),
-                Box::new(HoldMethod {}),
+                Rc::new(RefCell::new(HoldMethod)),
             )
         }
     }
@@ -1126,6 +1140,7 @@ use method_tx::*;
 
 mod affiliation_tx {
     use chrono::NaiveDate;
+    use std::{cell::RefCell, rc::Rc};
     use tx_rs::Tx;
 
     use crate::affiliation::{NoAffiliation, ServiceCharge, UnionAffiliation};
@@ -1153,15 +1168,14 @@ mod affiliation_tx {
                     .fetch(emp_id)
                     .run(ctx)
                     .map_err(EmployeeUsecaseError::NotFound)?;
-                let mut binding = emp.get_affiliation();
-                let affiliation = binding
+                emp.get_affiliation()
+                    .borrow_mut()
                     .as_any_mut()
                     .downcast_mut::<UnionAffiliation>()
                     .ok_or(EmployeeUsecaseError::NotUnionMember(format!(
                         "emp_id: {0}",
                         emp_id,
-                    )))?;
-                affiliation
+                    )))?
                     .add_service_charge(ServiceCharge::new(self.get_date(), self.get_amount()));
                 self.dao()
                     .update(emp)
@@ -1197,7 +1211,10 @@ mod affiliation_tx {
                         .run(ctx)
                         .map_err(EmployeeUsecaseError::AddUnionMemberFailed)
                 },
-                Box::new(UnionAffiliation::new(self.get_member_id(), self.get_dues())),
+                Rc::new(RefCell::new(UnionAffiliation::new(
+                    self.get_member_id(),
+                    self.get_dues(),
+                ))),
             )
         }
     }
@@ -1223,6 +1240,7 @@ mod affiliation_tx {
                 |ctx, emp| {
                     let member_id = emp
                         .get_affiliation()
+                        .borrow()
                         .as_any()
                         .downcast_ref::<UnionAffiliation>()
                         .map_or(
@@ -1237,7 +1255,7 @@ mod affiliation_tx {
                         .run(ctx)
                         .map_err(EmployeeUsecaseError::RemoveUnionMemberFailed)
                 },
-                Box::new(NoAffiliation),
+                Rc::new(RefCell::new(NoAffiliation)),
             )
         }
     }
@@ -1254,6 +1272,15 @@ struct MockDb {
     employees: Rc<RefCell<HashMap<EmployeeId, Employee>>>,
     union_members: Rc<RefCell<HashMap<MemberId, EmployeeId>>>,
     paychecks: Rc<RefCell<HashMap<EmployeeId, PayCheck>>>,
+}
+impl MockDb {
+    fn new() -> Self {
+        Self {
+            employees: Rc::new(RefCell::new(HashMap::new())),
+            union_members: Rc::new(RefCell::new(HashMap::new())),
+            paychecks: Rc::new(RefCell::new(HashMap::new())),
+        }
+    }
 }
 impl EmployeeDao<()> for MockDb {
     fn insert(
@@ -1802,9 +1829,9 @@ enum TranSrc {
     ChangeSalary(ChangeSalaryTransactionImpl),
     ChangeHourly(ChangeHourlyTransactionImpl),
     ChangeCommissioned(ChangeCommissionedTransactionImpl),
+    ChangeHold(ChangeHoldTransactionImpl),
     ChangeDirect(ChangeDirectTransactionImpl),
     ChangeMail(ChangeMailTransactionImpl),
-    ChangeHold(ChangeHoldTransactionImpl),
     ChangeUnionMember(ChangeUnionMemberTransactionImpl),
     ChangeNoMember(ChangeNoMemberTransactionImpl),
     Payday(PaydayTransactionImpl),
@@ -2038,6 +2065,9 @@ pub mod parser {
         Payday {
             pay_date: NaiveDate,
         },
+    }
+    pub fn transactions() -> impl Parser<Item = Vec<Tran>> {
+        transaction().many0()
     }
     pub fn transaction() -> impl Parser<Item = Tran> {
         add_salary_emp()
@@ -2979,303 +3009,112 @@ pub mod parser {
 }
 use parser::*;
 
-fn main() {
-    let db = MockDb {
-        employees: Rc::new(RefCell::new(HashMap::new())),
-        union_members: Rc::new(RefCell::new(HashMap::new())),
-        paychecks: Rc::new(RefCell::new(HashMap::new())),
-    };
+struct PayrollApp {
+    db: MockDb,
+    input: String,
+}
+impl PayrollApp {
+    pub fn new(file_name: &str) -> Self {
+        let input = std::fs::read_to_string(file_name).expect("read file");
 
-    let req = AddSalariedEmployeeTransactionImpl {
-        db: db.clone(),
-        emp_id: 1,
-        name: "Bob".to_string(),
-        address: "Home".to_string(),
-        salary: 1000.00,
-    };
-    let emp_id = req.execute().run(&mut ()).expect("add employee");
-    println!("emp_id: {:?}", emp_id);
-    println!("registered: {:#?}", db);
-
-    let req = ChangeNameTransactionImpl {
-        db: db.clone(),
-        emp_id: 1,
-        name: "Robert".to_string(),
-    };
-    let _ = req.execute().run(&mut ()).expect("change name");
-    println!("name changed: {:#?}", db);
-
-    let req = ChangeAddressTransactionImpl {
-        db: db.clone(),
-        emp_id: 1,
-        address: "Office".to_string(),
-    };
-    let _ = req.execute().run(&mut ()).expect("change address");
-    println!("address changed: {:#?}", db);
-
-    let req = AddHourlyEmployeeTransactionImpl {
-        db: db.clone(),
-        emp_id: 2,
-        name: "Bill".to_string(),
-        address: "Home".to_string(),
-        hourly_rate: 15.25,
-    };
-    let emp_id = req.execute().run(&mut ()).expect("add employee");
-    println!("emp_id: {:?}", emp_id);
-    println!("registered: {:#?}", db);
-
-    let req = TimeCardTransactionImpl {
-        db: db.clone(),
-        emp_id: 2,
-        date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
-        hours: 8.0,
-    };
-    let _ = req.execute().run(&mut ()).expect("time card");
-
-    let req = AddCommissionedEmployeeTransactionImpl {
-        db: db.clone(),
-        emp_id: 3,
-        name: "Lance".to_string(),
-        address: "Home".to_string(),
-        salary: 2500.00,
-        commission_rate: 3.2,
-    };
-    let emp_id = req.execute().run(&mut ()).expect("add employee");
-    println!("emp_id: {:?}", emp_id);
-    println!("registered: {:#?}", db);
-
-    let req = SalesReceiptTransactionImpl {
-        db: db.clone(),
-        emp_id: 3,
-        date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
-        amount: 1000.00,
-    };
-    let _ = req.execute().run(&mut ()).expect("sales receipt");
-
-    let req = AddSalariedEmployeeTransactionImpl {
-        db: db.clone(),
-        emp_id: 4,
-        name: "Anna".to_string(),
-        address: "Home".to_string(),
-        salary: 1500.00,
-    };
-    let emp_id = req.execute().run(&mut ()).expect("add employee");
-    println!("emp_id: {:?}", emp_id);
-    println!("registered: {:#?}", db);
-
-    let req = ChangeHourlyTransactionImpl {
-        db: db.clone(),
-        emp_id: 4,
-        hourly_rate: 20.00,
-    };
-    let _ = req.execute().run(&mut ()).expect("change hourly");
-    println!("change hourly: {:#?}", db);
-
-    let req = ChangeCommissionedTransactionImpl {
-        db: db.clone(),
-        emp_id: 4,
-        salary: 2000.00,
-        commission_rate: 2.5,
-    };
-    let _ = req.execute().run(&mut ()).expect("change commissioned");
-    println!("change commissioned: {:#?}", db);
-
-    let req = ChangeSalaryTransactionImpl {
-        db: db.clone(),
-        emp_id: 4,
-        salary: 3000.00,
-    };
-    let _ = req.execute().run(&mut ()).expect("change salary");
-    println!("change salary: {:#?}", db);
-
-    let req = ChangeDirectTransactionImpl {
-        db: db.clone(),
-        emp_id: 4,
-        bank: "mufg".to_string(),
-        account: "1234567".to_string(),
-    };
-    let _ = req.execute().run(&mut ()).expect("change direct");
-    println!("change direct: {:#?}", db);
-
-    let req = ChangeMailTransactionImpl {
-        db: db.clone(),
-        emp_id: 4,
-        address: "alice@gmail.com".to_string(),
-    };
-    let _ = req.execute().run(&mut ()).expect("change mail");
-    println!("change mail: {:#?}", db);
-
-    let req = ChangeHoldTransactionImpl {
-        db: db.clone(),
-        emp_id: 4,
-    };
-    let _ = req.execute().run(&mut ()).expect("change hold");
-    println!("change hold: {:#?}", db);
-
-    let req = ChangeUnionMemberTransactionImpl {
-        db: db.clone(),
-        emp_id: 4,
-        member_id: 7734,
-        dues: 99.42,
-    };
-    let _ = req.execute().run(&mut ()).expect("change union member");
-    println!("change union member: {:#?}", db);
-
-    let req = ServiceChargeTransactionImpl {
-        db: db.clone(),
-        member_id: 7734,
-        date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
-        amount: 12.95,
-    };
-    let _ = req.execute().run(&mut ()).expect("service charge");
-    println!("service charge: {:#?}", db);
-
-    let req = ChangeNoMemberTransactionImpl {
-        db: db.clone(),
-        emp_id: 4,
-    };
-    let _ = req.execute().run(&mut ()).expect("change no member");
-    println!("remove union member: {:#?}", db);
-
-    for emp_id in 1..=4 {
-        let req = DeleteEmployeeTransactionImpl {
-            db: db.clone(),
-            emp_id,
-        };
-        let _ = req.execute().run(&mut ()).expect("delete employee");
-        println!("deleted: {:#?}", db);
+        Self {
+            db: MockDb::new(),
+            input,
+        }
     }
+    pub fn run_on(&mut self) {
+        use parsec_rs::Parser;
 
-    // payday
-    let req = AddSalariedEmployeeTransactionImpl {
-        db: db.clone(),
-        emp_id: 1,
-        name: "Bob".to_string(),
-        address: "Home".to_string(),
-        salary: 1000.00,
-    };
-    let emp_id = req.execute().run(&mut ()).expect("add employee");
-    println!("emp_id: {:?}", emp_id);
-    println!("registered: {:#?}", db);
-    let mut req = PaydayTransactionImpl {
-        db: db.clone(),
-        pay_date: NaiveDate::from_ymd_opt(2024, 7, 29).unwrap(),
-    };
-    let _ = req.execute().run(&mut ()).expect("payday");
-    println!("paychecks: {:#?}", db);
+        for tran in transactions()
+            .parse(&mut self.input)
+            .map(|(ts, _)| {
+                ts.into_iter()
+                    .map(|t| TranSrc::from_tran_with(t, self.db.clone()))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+        {
+            match tran {
+                TranSrc::AddSalaryEmp(t) => {
+                    println!(">>> Add Salary Employee <<<");
+                    t.execute().run(&mut ()).expect("add salary employee");
+                }
+                TranSrc::AddHourlyEmp(t) => {
+                    println!(">>> Add Hourly Employee <<<");
+                    t.execute().run(&mut ()).expect("add hourly employee");
+                }
+                TranSrc::AddCommissionedEmp(t) => {
+                    println!(">>> Add Commissioned Employee <<<");
+                    t.execute().run(&mut ()).expect("add commissioned employee");
+                    println!("{:#?}", self.db);
+                }
+                TranSrc::DelEmp(t) => {
+                    println!(">>> Delete Employee <<<");
+                    t.execute().run(&mut ()).expect("delete employee");
+                }
+                TranSrc::TimeCard(t) => {
+                    println!(">>> TimeCard <<<");
+                    t.execute().run(&mut ()).expect("add time card");
+                }
+                TranSrc::SalesReceipt(t) => {
+                    println!(">>> SalesReceipt <<<");
+                    t.execute().run(&mut ()).expect("add sales receipt");
+                }
+                TranSrc::ServiceCharge(t) => {
+                    println!(">>> ServiceCharge <<<");
+                    t.execute().run(&mut ()).expect("add service charge");
+                }
+                TranSrc::ChangeName(t) => {
+                    println!(">>> Change Employee Name <<<");
+                    t.execute().run(&mut ()).expect("change name");
+                }
+                TranSrc::ChangeAddress(t) => {
+                    println!(">>> Change Employee Address <<<");
+                    t.execute().run(&mut ()).expect("change address");
+                }
+                TranSrc::ChangeSalary(t) => {
+                    println!(">>> Change Salary <<<");
+                    t.execute().run(&mut ()).expect("change salary");
+                }
+                TranSrc::ChangeHourly(t) => {
+                    println!(">>> Change Hourly <<<");
+                    t.execute().run(&mut ()).expect("change hourly");
+                }
+                TranSrc::ChangeCommissioned(t) => {
+                    println!(">>> Change Commissioned <<<");
+                    t.execute().run(&mut ()).expect("change commissioned");
+                }
+                TranSrc::ChangeHold(t) => {
+                    println!(">>> Change Hold <<<");
+                    t.execute().run(&mut ()).expect("change hold");
+                }
+                TranSrc::ChangeDirect(t) => {
+                    println!(">>> Change Direct <<<");
+                    t.execute().run(&mut ()).expect("change direct");
+                }
+                TranSrc::ChangeMail(t) => {
+                    println!(">>> Change Mail <<<");
+                    t.execute().run(&mut ()).expect("change mail");
+                }
+                TranSrc::ChangeUnionMember(t) => {
+                    println!(">>> Union Member <<<");
+                    t.execute().run(&mut ()).expect("change member");
+                }
+                TranSrc::ChangeNoMember(t) => {
+                    println!(">>> No Member <<<");
+                    t.execute().run(&mut ()).expect("change no member");
+                }
+                TranSrc::Payday(mut t) => {
+                    println!(">>> Payday <<<");
+                    t.execute().run(&mut ()).expect("payday");
+                }
+            }
+            println!("{:#?}", self.db);
+        }
+    }
+}
 
-    let mut req = PaydayTransactionImpl {
-        db: db.clone(),
-        pay_date: NaiveDate::from_ymd_opt(2024, 7, 31).unwrap(),
-    };
-    let _ = req.execute().run(&mut ()).expect("payday");
-    println!("paychecks: {:#?}", db);
-
-    let req = DeleteEmployeeTransactionImpl {
-        db: db.clone(),
-        emp_id: 1,
-    };
-    let _ = req.execute().run(&mut ()).expect("delete employee");
-
-    let req = AddHourlyEmployeeTransactionImpl {
-        db: db.clone(),
-        emp_id: 2,
-        name: "Bill".to_string(),
-        address: "Home".to_string(),
-        hourly_rate: 15.25,
-    };
-    let emp_id = req.execute().run(&mut ()).expect("add employee");
-    println!("emp_id: {:?}", emp_id);
-    println!("registered: {:#?}", db);
-
-    let mut req = PaydayTransactionImpl {
-        db: db.clone(),
-        pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
-    };
-    let _ = req.execute().run(&mut ()).expect("payday");
-    println!("paychecks: {:#?}", db);
-
-    let req = TimeCardTransactionImpl {
-        db: db.clone(),
-        emp_id: 2,
-        date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(),
-        hours: 2.0,
-    };
-    let _ = req.execute().run(&mut ()).expect("time card");
-
-    let mut req = PaydayTransactionImpl {
-        db: db.clone(),
-        pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
-    };
-    let _ = req.execute().run(&mut ()).expect("payday");
-    println!("paychecks: {:#?}", db);
-
-    let req = TimeCardTransactionImpl {
-        db: db.clone(),
-        emp_id: 2,
-        date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
-        hours: 9.0,
-    };
-    let _ = req.execute().run(&mut ()).expect("time card");
-
-    let mut req = PaydayTransactionImpl {
-        db: db.clone(),
-        pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(), // Friday
-    };
-    let _ = req.execute().run(&mut ()).expect("payday");
-    println!("paychecks: {:#?}", db);
-
-    let req = TimeCardTransactionImpl {
-        db: db.clone(),
-        emp_id: 2,
-        date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
-        hours: 5.0,
-    };
-    let _ = req.execute().run(&mut ()).expect("time card");
-
-    let mut req = PaydayTransactionImpl {
-        db: db.clone(),
-        pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
-    };
-    let _ = req.execute().run(&mut ()).expect("payday");
-    println!("paychecks: {:#?}", db);
-
-    let mut req = PaydayTransactionImpl {
-        db: db.clone(),
-        pay_date: NaiveDate::from_ymd_opt(2024, 8, 8).unwrap(), // Thursday
-    };
-    let _ = req.execute().run(&mut ()).expect("payday");
-    println!("paychecks: {:#?}", db);
-
-    let req = ChangeUnionMemberTransactionImpl {
-        db: db.clone(),
-        emp_id: 2,
-        member_id: 7734,
-        dues: 9.42,
-    };
-    let _ = req.execute().run(&mut ()).expect("change union member");
-    println!("emp_id: {:?}", emp_id);
-    println!("registered: {:#?}", db);
-
-    let mut req = PaydayTransactionImpl {
-        db: db.clone(),
-        pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
-    };
-    let _ = req.execute().run(&mut ()).expect("payday");
-    println!("paychecks: {:#?}", db);
-
-    let req = ServiceChargeTransactionImpl {
-        db: db.clone(),
-        member_id: 7734,
-        date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
-        amount: 19.40,
-    };
-    let _ = req.execute().run(&mut ()).expect("service charge");
-
-    let mut req = PaydayTransactionImpl {
-        db: db.clone(),
-        pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
-    };
-    let _ = req.execute().run(&mut ()).expect("payday");
-    println!("paychecks: {:#?}", db);
+fn main() {
+    let mut app = PayrollApp::new("script/test.scr");
+    app.run_on();
 }
