@@ -1980,7 +1980,7 @@ impl TranSrc {
 // Parser
 pub mod parser {
     use super::*;
-    use parsec_rs::{char, float32, int32, keyword, spaces, string, uint32, Parser};
+    use parsec_rs::{char, float32, int32, keyword, pred, spaces, string, uint32, Parser};
 
     #[derive(Debug, Clone, PartialEq)]
     pub enum Tran {
@@ -2070,29 +2070,58 @@ pub mod parser {
         transaction().many0()
     }
     pub fn transaction() -> impl Parser<Item = Tran> {
-        add_salary_emp()
-            .or(add_hourly_emp())
-            .or(add_commissioned_emp())
-            .or(del_emp())
-            .or(time_card())
-            .or(sales_receipt())
-            .or(service_charge())
-            .or(chg_name())
-            .or(chg_address())
-            .or(chg_hourly())
-            .or(chg_salaried())
-            .or(chg_commissioned())
-            .or(chg_hold())
-            .or(chg_direct())
-            .or(chg_mail())
-            .or(chg_member())
-            .or(chg_no_member())
-            .or(payday())
+        go_through().skip(
+            add_salary_emp()
+                .or(add_hourly_emp())
+                .or(add_commissioned_emp())
+                .or(del_emp())
+                .or(time_card())
+                .or(sales_receipt())
+                .or(service_charge())
+                .or(chg_name())
+                .or(chg_address())
+                .or(chg_hourly())
+                .or(chg_salaried())
+                .or(chg_commissioned())
+                .or(chg_hold())
+                .or(chg_direct())
+                .or(chg_mail())
+                .or(chg_member())
+                .or(chg_no_member())
+                .or(payday()),
+        )
     }
     #[cfg(test)]
     mod test_transaction {
         use super::*;
         use parsec_rs::Parser;
+
+        #[test]
+        fn test_go_through() {
+            let input = "";
+            let result = go_through().parse(input);
+            assert_eq!(result, Ok(((), "")));
+
+            let input = "Code";
+            let result = go_through().parse(input);
+            assert_eq!(result, Ok(((), "Code")));
+
+            let input = "# comment\nCode";
+            let result = go_through().parse(input);
+            assert_eq!(result, Ok(((), "Code")));
+
+            let input = "# comment\n#\n# comment\nCode";
+            let result = go_through().parse(input);
+            assert_eq!(result, Ok(((), "Code")));
+
+            let input = " \t\n# comment\n#\nCode";
+            let result = go_through().parse(input);
+            assert_eq!(result, Ok(((), "Code")));
+
+            let input = " \t\n# comment\n#\n \tCode";
+            let result = go_through().parse(input);
+            assert_eq!(result, Ok(((), "Code")));
+        }
 
         #[test]
         fn test_add_salary_emp() {
@@ -2335,6 +2364,17 @@ pub mod parser {
             let result = transaction().parse(input);
             assert_eq!(result, Ok((Tran::ChgNoMember { emp_id: 42 }, "")));
         }
+    }
+
+    fn go_through() -> impl Parser<Item = ()> {
+        let comment = char('#').skip(pred(|c| c != '\n').many0().with(char('\n')));
+        spaces().skip(
+            comment
+                .many1()
+                .map(|_| ())
+                .skip(spaces().map(|_| ()))
+                .or(spaces().map(|_| ())),
+        )
     }
 
     fn add_salary_emp() -> impl Parser<Item = Tran> {
