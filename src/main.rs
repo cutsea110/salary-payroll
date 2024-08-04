@@ -743,14 +743,6 @@ mod general_tx {
         T: AddEmployeeTransaction<Ctx> + SalaryEmployee
     {
     }
-    impl<T, Ctx> From<T> for AddSalaryEmpTxTemplate<T, Ctx>
-    where
-        T: AddSalaryEmployeeTransaction<Ctx>,
-    {
-        fn from(base: T) -> Self {
-            AddSalaryEmpTxTemplate::new(base)
-        }
-    }
 
     pub trait HourlyEmployee {
         fn get_emp_id(&self) -> EmployeeId;
@@ -2836,14 +2828,13 @@ fn main() {
         union_members: Rc::new(RefCell::new(HashMap::new())),
     };
 
-    let req: AddSalaryEmpTxTemplate<_, _> = AddSalariedEmployeeTransactionImpl {
+    let req = AddSalaryEmpTxTemplate::new(AddSalariedEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 1,
         name: "Bob".to_string(),
         address: "Home".to_string(),
         salary: 1000.00,
-    }
-    .into();
+    });
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
