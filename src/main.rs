@@ -1385,35 +1385,6 @@ mod classification_tx {
         }
     }
 
-    pub struct CommissionedChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeCommissionedTransaction<Ctx>,
-    {
-        base: T,
-        phantom: PhantomData<Ctx>,
-    }
-    impl<T, Ctx> CommissionedChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeCommissionedTransaction<Ctx>,
-    {
-        pub fn new(base: T) -> Self {
-            CommissionedChgEmpTxTemplate {
-                base,
-                phantom: PhantomData,
-            }
-        }
-    }
-    impl<T, Ctx> Transaction<Ctx> for CommissionedChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeCommissionedTransaction<Ctx>,
-    {
-        type Item = ();
-
-        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
-            ChangeCommissionedTransaction::<Ctx>::execute(&self.base)
-        }
-    }
-
     pub trait CommissionedChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_salary(&self) -> f64;
@@ -1441,14 +1412,6 @@ mod classification_tx {
     impl<T, Ctx> ChangeCommissionedTransaction<Ctx> for T where
         T: ChangeClassificationTransaction<Ctx> + CommissionedChangeableEmployee
     {
-    }
-    impl<T, Ctx> From<T> for CommissionedChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeCommissionedTransaction<Ctx>,
-    {
-        fn from(base: T) -> Self {
-            CommissionedChgEmpTxTemplate::new(base)
-        }
     }
 }
 use classification_tx::*;
@@ -3302,13 +3265,12 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("change hourly");
     println!("change hourly: {:#?}", db);
 
-    let req: CommissionedChgEmpTxTemplate<_, _> = ChangeCommissionedTransactionImpl {
+    let req = ChangeCommissionedTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         salary: 2000.00,
         commission_rate: 2.5,
-    }
-    .into();
+    };
     let _ = req.execute().run(&mut ()).expect("change commissioned");
     println!("change commissioned: {:#?}", db);
 
