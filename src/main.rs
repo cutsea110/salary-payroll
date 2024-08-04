@@ -1587,35 +1587,6 @@ mod method_tx {
         }
     }
 
-    pub struct HoldChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeHoldTransaction<Ctx>,
-    {
-        base: T,
-        phantom: PhantomData<Ctx>,
-    }
-    impl<T, Ctx> HoldChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeHoldTransaction<Ctx>,
-    {
-        pub fn new(base: T) -> Self {
-            HoldChgEmpTxTemplate {
-                base,
-                phantom: PhantomData,
-            }
-        }
-    }
-    impl<T, Ctx> Transaction<Ctx> for HoldChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeHoldTransaction<Ctx>,
-    {
-        type Item = ();
-
-        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
-            ChangeHoldTransaction::<Ctx>::execute(&self.base)
-        }
-    }
-
     pub trait HoldChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
     }
@@ -1637,14 +1608,6 @@ mod method_tx {
     impl<T, Ctx> ChangeHoldTransaction<Ctx> for T where
         T: ChangeMethodTransaction<Ctx> + HoldChangeableEmployee
     {
-    }
-    impl<T, Ctx> From<T> for HoldChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeHoldTransaction<Ctx>,
-    {
-        fn from(base: T) -> Self {
-            HoldChgEmpTxTemplate::new(base)
-        }
     }
 }
 use method_tx::*;
@@ -3454,11 +3417,10 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("change mail");
     println!("change mail: {:#?}", db);
 
-    let req: HoldChgEmpTxTemplate<_, _> = ChangeHoldTransactionImpl {
+    let req = ChangeHoldTransactionImpl {
         db: db.clone(),
         emp_id: 4,
-    }
-    .into();
+    };
     let _ = req.execute().run(&mut ()).expect("change hold");
     println!("change hold: {:#?}", db);
 
