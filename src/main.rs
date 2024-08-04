@@ -1250,44 +1250,12 @@ mod general_tx {
 use general_tx::*;
 
 mod classification_tx {
-    use std::marker::PhantomData;
-
     use crate::classification::{
         CommissionedClassification, HourlyClassification, SalariedClassification,
     };
     use crate::domain::EmployeeId;
     use crate::schedule::{BiweeklySchedule, MonthlySchedule, WeeklySchedule};
-    use crate::tx_base::Transaction;
     use crate::tx_base::{ChangeClassificationTransaction, EmployeeUsecaseError};
-
-    pub struct SalaryChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeSalariedTransaction<Ctx>,
-    {
-        base: T,
-        phantom: PhantomData<Ctx>,
-    }
-    impl<T, Ctx> SalaryChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeSalariedTransaction<Ctx>,
-    {
-        pub fn new(base: T) -> Self {
-            SalaryChgEmpTxTemplate {
-                base,
-                phantom: PhantomData,
-            }
-        }
-    }
-    impl<T, Ctx> Transaction<Ctx> for SalaryChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeSalariedTransaction<Ctx>,
-    {
-        type Item = ();
-
-        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
-            ChangeSalariedTransaction::<Ctx>::execute(&self.base)
-        }
-    }
 
     pub trait SalaryChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
@@ -1313,14 +1281,6 @@ mod classification_tx {
     impl<T, Ctx> ChangeSalariedTransaction<Ctx> for T where
         T: ChangeClassificationTransaction<Ctx> + SalaryChangeableEmployee
     {
-    }
-    impl<T, Ctx> From<T> for SalaryChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeSalariedTransaction<Ctx>,
-    {
-        fn from(base: T) -> Self {
-            SalaryChgEmpTxTemplate::new(base)
-        }
     }
 
     pub trait HourlyChangeableEmployee {
@@ -3236,12 +3196,11 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("change commissioned");
     println!("change commissioned: {:#?}", db);
 
-    let req: SalaryChgEmpTxTemplate<_, _> = ChangeSalaryTransactionImpl {
+    let req = ChangeSalaryTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         salary: 3000.00,
-    }
-    .into();
+    };
     let _ = req.execute().run(&mut ()).expect("change salary");
     println!("change salary: {:#?}", db);
 
