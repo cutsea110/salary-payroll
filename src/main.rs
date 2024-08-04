@@ -539,10 +539,6 @@ mod tx_base {
         RemoveUnionMemberFailed(EmployeeDaoError),
     }
 
-    pub trait Transaction<Ctx> {
-        fn execute(&self);
-    }
-
     pub trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
         fn execute<'a>(
             &'a self,
@@ -663,7 +659,6 @@ mod tx_base {
 
 mod general_tx {
     use chrono::NaiveDate;
-    use std::marker::PhantomData;
     use tx_rs::Tx;
 
     use crate::classification::{
@@ -673,25 +668,7 @@ mod general_tx {
     use crate::dao::{EmployeeDao, HaveEmployeeDao};
     use crate::domain::{EmployeeId, PayCheck};
     use crate::schedule::{BiweeklySchedule, MonthlySchedule, WeeklySchedule};
-    use crate::tx_base::{
-        AddEmployeeTransaction, ChangeEmployeeTransaction, EmployeeUsecaseError, Transaction,
-    };
-
-    pub struct AddSalaryEmpTxTemplate<T, Ctx>
-    where
-        T: AddSalaryEmployeeTransaction<Ctx>,
-    {
-        internal: T,
-        phantom: PhantomData<Ctx>,
-    }
-    impl<T, Ctx> Transaction<Ctx> for AddSalaryEmpTxTemplate<T, Ctx>
-    where
-        T: AddSalaryEmployeeTransaction<Ctx>,
-    {
-        fn execute(&self) {
-            AddSalaryEmployeeTransaction::<Ctx>::execute(&self.internal);
-        }
-    }
+    use crate::tx_base::{AddEmployeeTransaction, ChangeEmployeeTransaction, EmployeeUsecaseError};
 
     pub trait SalaryEmployee {
         fn get_emp_id(&self) -> EmployeeId;
