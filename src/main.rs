@@ -705,9 +705,6 @@ mod general_tx {
                 phantom: PhantomData,
             }
         }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = EmployeeId> {
-            self
-        }
     }
     impl<T, Ctx> Transaction<Ctx> for AddSalaryEmpTxTemplate<T, Ctx>
     where
@@ -782,9 +779,6 @@ mod general_tx {
                 phantom: PhantomData,
             }
         }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = EmployeeId> {
-            self
-        }
     }
     impl<T, Ctx> Transaction<Ctx> for AddHourlyEmpTxTemplate<T, Ctx>
     where
@@ -858,9 +852,6 @@ mod general_tx {
                 base,
                 phantom: PhantomData,
             }
-        }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = EmployeeId> {
-            self
         }
     }
     impl<T, Ctx> Transaction<Ctx> for AddCommissionedEmpTxTemplate<T, Ctx>
@@ -940,9 +931,6 @@ mod general_tx {
                 phantom: PhantomData,
             }
         }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
-        }
     }
     impl<T, Ctx> Transaction<Ctx> for DeleteEmpTxTemplate<T, Ctx>
     where
@@ -995,9 +983,6 @@ mod general_tx {
                 base,
                 phantom: PhantomData,
             }
-        }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
         }
     }
     impl<T, Ctx> Transaction<Ctx> for TimeCardEmpTxTemplate<T, Ctx>
@@ -1067,9 +1052,6 @@ mod general_tx {
                 base,
                 phantom: PhantomData,
             }
-        }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
         }
     }
     impl<T, Ctx> Transaction<Ctx> for SalesReceiptEmpTxTemplate<T, Ctx>
@@ -1141,9 +1123,6 @@ mod general_tx {
                 phantom: PhantomData,
             }
         }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
-        }
     }
     impl<T, Ctx> Transaction<Ctx> for NameChgEmpTxTemplate<T, Ctx>
     where
@@ -1204,9 +1183,6 @@ mod general_tx {
                 phantom: PhantomData,
             }
         }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
-        }
     }
     impl<T, Ctx> Transaction<Ctx> for AddressChgEmpTxTemplate<T, Ctx>
     where
@@ -1266,9 +1242,6 @@ mod general_tx {
                 base,
                 phantom: PhantomData,
             }
-        }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
         }
     }
     impl<T, Ctx> Transaction<Ctx> for PayableEmpTxTemplate<T, Ctx>
@@ -1353,9 +1326,6 @@ mod classification_tx {
                 phantom: PhantomData,
             }
         }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
-        }
     }
     impl<T, Ctx> Transaction<Ctx> for SalaryChgEmpTxTemplate<T, Ctx>
     where
@@ -1419,9 +1389,6 @@ mod classification_tx {
                 phantom: PhantomData,
             }
         }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
-        }
     }
     impl<T, Ctx> Transaction<Ctx> for HourlyChgEmpTxTemplate<T, Ctx>
     where
@@ -1483,9 +1450,6 @@ mod classification_tx {
                 base,
                 phantom: PhantomData,
             }
-        }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
         }
     }
     impl<T, Ctx> Transaction<Ctx> for CommissionedChgEmpTxTemplate<T, Ctx>
@@ -1563,9 +1527,6 @@ mod method_tx {
                 phantom: PhantomData,
             }
         }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
-        }
     }
     impl<T, Ctx> Transaction<Ctx> for DirectChgEmpTxTemplate<T, Ctx>
     where
@@ -1631,9 +1592,6 @@ mod method_tx {
                 phantom: PhantomData,
             }
         }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
-        }
     }
     impl<T, Ctx> Transaction<Ctx> for MailChgEmpTxTemplate<T, Ctx>
     where
@@ -1694,9 +1652,6 @@ mod method_tx {
                 base,
                 phantom: PhantomData,
             }
-        }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
         }
     }
     impl<T, Ctx> Transaction<Ctx> for HoldChgEmpTxTemplate<T, Ctx>
@@ -1770,9 +1725,6 @@ mod affiliation_tx {
                 base,
                 phantom: PhantomData,
             }
-        }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
         }
     }
     impl<T, Ctx> Transaction<Ctx> for ServiceChargeableMembTxTemplate<T, Ctx>
@@ -1854,9 +1806,6 @@ mod affiliation_tx {
                 phantom: PhantomData,
             }
         }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
-        }
     }
     impl<T, Ctx> Transaction<Ctx> for UnionChgMembTxTemplate<T, Ctx>
     where
@@ -1924,9 +1873,6 @@ mod affiliation_tx {
                 base,
                 phantom: PhantomData,
             }
-        }
-        pub fn as_tx(self) -> impl Transaction<Ctx, Item = ()> {
-            self
         }
     }
     impl<T, Ctx> Transaction<Ctx> for UnaffiliatiatedChgMembTxTemplate<T, Ctx>
@@ -3547,332 +3493,331 @@ fn main() {
         paychecks: Rc::new(RefCell::new(HashMap::new())),
     };
 
-    let req = Into::<AddSalaryEmpTxTemplate<_, _>>::into(AddSalariedEmployeeTransactionImpl {
+    let req: AddSalaryEmpTxTemplate<_, _> = AddSalariedEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 1,
         name: "Bob".to_string(),
         address: "Home".to_string(),
         salary: 1000.00,
-    })
-    .as_tx();
+    }
+    .into();
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = Into::<NameChgEmpTxTemplate<_, _>>::into(ChangeNameTransactionImpl {
+    let req: NameChgEmpTxTemplate<_, _> = ChangeNameTransactionImpl {
         db: db.clone(),
         emp_id: 1,
         name: "Robert".to_string(),
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change name");
     println!("name changed: {:#?}", db);
 
-    let req = Into::<AddressChgEmpTxTemplate<_, _>>::into(ChangeAddressTransactionImpl {
+    let req: AddressChgEmpTxTemplate<_, _> = ChangeAddressTransactionImpl {
         db: db.clone(),
         emp_id: 1,
         address: "Office".to_string(),
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change address");
     println!("address changed: {:#?}", db);
 
-    let req = Into::<AddHourlyEmpTxTemplate<_, _>>::into(AddHourlyEmployeeTransactionImpl {
+    let req: AddHourlyEmpTxTemplate<_, _> = AddHourlyEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         name: "Bill".to_string(),
         address: "Home".to_string(),
         hourly_rate: 15.25,
-    })
-    .as_tx();
+    }
+    .into();
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = Into::<TimeCardEmpTxTemplate<_, _>>::into(TimeCardTransactionImpl {
+    let req: TimeCardEmpTxTemplate<_, _> = TimeCardTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
         hours: 8.0,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("time card");
 
-    let req =
-        Into::<AddCommissionedEmpTxTemplate<_, _>>::into(AddCommissionedEmployeeTransactionImpl {
-            db: db.clone(),
-            emp_id: 3,
-            name: "Lance".to_string(),
-            address: "Home".to_string(),
-            salary: 2500.00,
-            commission_rate: 3.2,
-        })
-        .as_tx();
+    let req: AddCommissionedEmpTxTemplate<_, _> = AddCommissionedEmployeeTransactionImpl {
+        db: db.clone(),
+        emp_id: 3,
+        name: "Lance".to_string(),
+        address: "Home".to_string(),
+        salary: 2500.00,
+        commission_rate: 3.2,
+    }
+    .into();
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = Into::<SalesReceiptEmpTxTemplate<_, _>>::into(SalesReceiptTransactionImpl {
+    let req: SalesReceiptEmpTxTemplate<_, _> = SalesReceiptTransactionImpl {
         db: db.clone(),
         emp_id: 3,
         date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
         amount: 1000.00,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("sales receipt");
 
-    let req = Into::<AddSalaryEmpTxTemplate<_, _>>::into(AddSalariedEmployeeTransactionImpl {
+    let req: AddSalaryEmpTxTemplate<_, _> = AddSalariedEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         name: "Anna".to_string(),
         address: "Home".to_string(),
         salary: 1500.00,
-    })
-    .as_tx();
+    }
+    .into();
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = Into::<HourlyChgEmpTxTemplate<_, _>>::into(ChangeHourlyTransactionImpl {
+    let req: HourlyChgEmpTxTemplate<_, _> = ChangeHourlyTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         hourly_rate: 20.00,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change hourly");
     println!("change hourly: {:#?}", db);
 
-    let req = Into::<CommissionedChgEmpTxTemplate<_, _>>::into(ChangeCommissionedTransactionImpl {
+    let req: CommissionedChgEmpTxTemplate<_, _> = ChangeCommissionedTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         salary: 2000.00,
         commission_rate: 2.5,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change commissioned");
     println!("change commissioned: {:#?}", db);
 
-    let req = Into::<SalaryChgEmpTxTemplate<_, _>>::into(ChangeSalaryTransactionImpl {
+    let req: SalaryChgEmpTxTemplate<_, _> = ChangeSalaryTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         salary: 3000.00,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change salary");
     println!("change salary: {:#?}", db);
 
-    let req = Into::<DirectChgEmpTxTemplate<_, _>>::into(ChangeDirectTransactionImpl {
+    let req: DirectChgEmpTxTemplate<_, _> = ChangeDirectTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         bank: "mufg".to_string(),
         account: "1234567".to_string(),
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change direct");
     println!("change direct: {:#?}", db);
 
-    let req = Into::<MailChgEmpTxTemplate<_, _>>::into(ChangeMailTransactionImpl {
+    let req: MailChgEmpTxTemplate<_, _> = ChangeMailTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         address: "alice@gmail.com".to_string(),
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change mail");
     println!("change mail: {:#?}", db);
 
-    let req = Into::<HoldChgEmpTxTemplate<_, _>>::into(ChangeHoldTransactionImpl {
+    let req: HoldChgEmpTxTemplate<_, _> = ChangeHoldTransactionImpl {
         db: db.clone(),
         emp_id: 4,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change hold");
     println!("change hold: {:#?}", db);
 
-    let req = Into::<UnionChgMembTxTemplate<_, _>>::into(ChangeUnionMemberTransactionImpl {
+    let req: UnionChgMembTxTemplate<_, _> = ChangeUnionMemberTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         member_id: 7734,
         dues: 99.42,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change union member");
     println!("change union member: {:#?}", db);
 
-    let req = Into::<ServiceChargeableMembTxTemplate<_, _>>::into(ServiceChargeTransactionImpl {
+    let req: ServiceChargeableMembTxTemplate<_, _> = ServiceChargeTransactionImpl {
         db: db.clone(),
         member_id: 7734,
         date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
         amount: 12.95,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("service charge");
     println!("service charge: {:#?}", db);
 
-    let req = Into::<UnaffiliatiatedChgMembTxTemplate<_, _>>::into(ChangeNoMemberTransactionImpl {
+    let req: UnaffiliatiatedChgMembTxTemplate<_, _> = ChangeNoMemberTransactionImpl {
         db: db.clone(),
         emp_id: 4,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change no member");
     println!("remove union member: {:#?}", db);
 
     for emp_id in 1..=4 {
-        let req = Into::<DeleteEmpTxTemplate<_, _>>::into(DeleteEmployeeTransactionImpl {
+        let req: DeleteEmpTxTemplate<_, _> = DeleteEmployeeTransactionImpl {
             db: db.clone(),
             emp_id,
-        })
-        .as_tx();
+        }
+        .into();
         let _ = req.execute().run(&mut ()).expect("delete employee");
         println!("deleted: {:#?}", db);
     }
 
     // payday
-    let req = Into::<AddSalaryEmpTxTemplate<_, _>>::into(AddSalariedEmployeeTransactionImpl {
+    let req: AddSalaryEmpTxTemplate<_, _> = AddSalariedEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 1,
         name: "Bob".to_string(),
         address: "Home".to_string(),
         salary: 1000.00,
-    })
-    .as_tx();
+    }
+    .into();
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
-    let req = Into::<PayableEmpTxTemplate<_, _>>::into(PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 7, 29).unwrap(),
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
-    let req = Into::<PayableEmpTxTemplate<_, _>>::into(PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 7, 31).unwrap(),
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
-    let req = Into::<DeleteEmpTxTemplate<_, _>>::into(DeleteEmployeeTransactionImpl {
+    let req: DeleteEmpTxTemplate<_, _> = DeleteEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 1,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("delete employee");
 
-    let req = Into::<AddHourlyEmpTxTemplate<_, _>>::into(AddHourlyEmployeeTransactionImpl {
+    let req: AddHourlyEmpTxTemplate<_, _> = AddHourlyEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         name: "Bill".to_string(),
         address: "Home".to_string(),
         hourly_rate: 15.25,
-    })
-    .as_tx();
+    }
+    .into();
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = Into::<PayableEmpTxTemplate<_, _>>::into(PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
-    let req = Into::<TimeCardEmpTxTemplate<_, _>>::into(TimeCardTransactionImpl {
+    let req: TimeCardEmpTxTemplate<_, _> = TimeCardTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(),
         hours: 2.0,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("time card");
 
-    let req = Into::<PayableEmpTxTemplate<_, _>>::into(PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
-    let req = Into::<TimeCardEmpTxTemplate<_, _>>::into(TimeCardTransactionImpl {
+    let req: TimeCardEmpTxTemplate<_, _> = TimeCardTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
         hours: 9.0,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("time card");
 
-    let req = Into::<PayableEmpTxTemplate<_, _>>::into(PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(), // Friday
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
-    let req = Into::<TimeCardEmpTxTemplate<_, _>>::into(TimeCardTransactionImpl {
+    let req: TimeCardEmpTxTemplate<_, _> = TimeCardTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
         hours: 5.0,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("time card");
 
-    let req = Into::<PayableEmpTxTemplate<_, _>>::into(PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(), // Friday
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
-    let req = Into::<PayableEmpTxTemplate<_, _>>::into(PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 8, 8).unwrap(), // Thursday
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
-    let req = Into::<UnionChgMembTxTemplate<_, _>>::into(ChangeUnionMemberTransactionImpl {
+    let req: UnionChgMembTxTemplate<_, _> = ChangeUnionMemberTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         member_id: 7734,
         dues: 9.42,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("change union member");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req = Into::<PayableEmpTxTemplate<_, _>>::into(PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 
-    let req = Into::<ServiceChargeableMembTxTemplate<_, _>>::into(ServiceChargeTransactionImpl {
+    let req: ServiceChargeableMembTxTemplate<_, _> = ServiceChargeTransactionImpl {
         db: db.clone(),
         member_id: 7734,
         date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
         amount: 19.40,
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("service charge");
 
-    let req = Into::<PayableEmpTxTemplate<_, _>>::into(PaydayTransactionImpl {
+    let req: PayableEmpTxTemplate<_, _> = PaydayTransactionImpl {
         db: db.clone(),
         pay_date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
-    })
-    .as_tx();
+    }
+    .into();
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", db);
 }
