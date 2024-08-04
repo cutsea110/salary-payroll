@@ -752,35 +752,6 @@ mod general_tx {
         }
     }
 
-    pub struct AddHourlyEmpTxTemplate<T, Ctx>
-    where
-        T: AddHourlyEmployeeTransaction<Ctx>,
-    {
-        base: T,
-        phantom: PhantomData<Ctx>,
-    }
-    impl<T, Ctx> AddHourlyEmpTxTemplate<T, Ctx>
-    where
-        T: AddHourlyEmployeeTransaction<Ctx>,
-    {
-        pub fn new(base: T) -> Self {
-            AddHourlyEmpTxTemplate {
-                base,
-                phantom: PhantomData,
-            }
-        }
-    }
-    impl<T, Ctx> Transaction<Ctx> for AddHourlyEmpTxTemplate<T, Ctx>
-    where
-        T: AddHourlyEmployeeTransaction<Ctx>,
-    {
-        type Item = EmployeeId;
-
-        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
-            AddHourlyEmployeeTransaction::<Ctx>::execute(&self.base)
-        }
-    }
-
     pub trait HourlyEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_name(&self) -> &str;
@@ -816,14 +787,6 @@ mod general_tx {
     impl<T, Ctx> AddHourlyEmployeeTransaction<Ctx> for T where
         T: AddEmployeeTransaction<Ctx> + HourlyEmployee
     {
-    }
-    impl<T, Ctx> From<T> for AddHourlyEmpTxTemplate<T, Ctx>
-    where
-        T: AddHourlyEmployeeTransaction<Ctx>,
-    {
-        fn from(base: T) -> Self {
-            AddHourlyEmpTxTemplate::new(base)
-        }
     }
 
     pub trait CommissionedEmployee {
@@ -2901,14 +2864,13 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("change address");
     println!("address changed: {:#?}", db);
 
-    let req: AddHourlyEmpTxTemplate<_, _> = AddHourlyEmployeeTransactionImpl {
+    let req = AddHourlyEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         name: "Bill".to_string(),
         address: "Home".to_string(),
         hourly_rate: 15.25,
-    }
-    .into();
+    };
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
