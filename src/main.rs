@@ -1808,35 +1808,6 @@ mod affiliation_tx {
         }
     }
 
-    pub struct UnaffiliatiatedChgMembTxTemplate<T, Ctx>
-    where
-        T: ChangeUnaffiliatedTransaction<Ctx>,
-    {
-        base: T,
-        phantom: PhantomData<Ctx>,
-    }
-    impl<T, Ctx> UnaffiliatiatedChgMembTxTemplate<T, Ctx>
-    where
-        T: ChangeUnaffiliatedTransaction<Ctx>,
-    {
-        pub fn new(base: T) -> Self {
-            UnaffiliatiatedChgMembTxTemplate {
-                base,
-                phantom: PhantomData,
-            }
-        }
-    }
-    impl<T, Ctx> Transaction<Ctx> for UnaffiliatiatedChgMembTxTemplate<T, Ctx>
-    where
-        T: ChangeUnaffiliatedTransaction<Ctx>,
-    {
-        type Item = ();
-
-        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
-            ChangeUnaffiliatedTransaction::<Ctx>::execute(&self.base)
-        }
-    }
-
     pub trait NoAffiliationChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
     }
@@ -1875,14 +1846,6 @@ mod affiliation_tx {
     impl<T, Ctx> ChangeUnaffiliatedTransaction<Ctx> for T where
         T: ChangeAffiliationTransaction<Ctx> + NoAffiliationChangeableEmployee
     {
-    }
-    impl<T, Ctx> From<T> for UnaffiliatiatedChgMembTxTemplate<T, Ctx>
-    where
-        T: ChangeUnaffiliatedTransaction<Ctx>,
-    {
-        fn from(base: T) -> Self {
-            UnaffiliatiatedChgMembTxTemplate::new(base)
-        }
     }
 }
 use affiliation_tx::*;
@@ -3595,11 +3558,10 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("service charge");
     println!("service charge: {:#?}", db);
 
-    let req: UnaffiliatiatedChgMembTxTemplate<_, _> = ChangeNoMemberTransactionImpl {
+    let req = ChangeNoMemberTransactionImpl {
         db: db.clone(),
         emp_id: 4,
-    }
-    .into();
+    };
     let _ = req.execute().run(&mut ()).expect("change no member");
     println!("remove union member: {:#?}", db);
 
