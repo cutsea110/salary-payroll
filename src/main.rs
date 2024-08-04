@@ -2379,7 +2379,7 @@ pub mod parser {
         let emp_id = uint32().with(spaces());
         let name = string().with(spaces());
         let address = string().with(spaces());
-        let monthly_rate = char('S').skip(spaces()).skip(float32()).with(spaces());
+        let monthly_rate = char('S').skip(spaces()).skip(float32());
 
         prefix
             .skip(emp_id)
@@ -2422,7 +2422,7 @@ pub mod parser {
         let emp_id = uint32().with(spaces());
         let name = string().with(spaces());
         let address = string().with(spaces());
-        let hourly_rate = char('H').skip(spaces()).skip(float32()).with(spaces());
+        let hourly_rate = char('H').skip(spaces()).skip(float32());
 
         prefix
             .skip(emp_id)
@@ -2468,7 +2468,7 @@ pub mod parser {
         let name = string().with(spaces());
         let address = string().with(spaces());
         let salary = char('C').skip(spaces()).skip(float32()).with(spaces());
-        let commission_rate = float32().with(spaces());
+        let commission_rate = float32();
 
         prefix
             .skip(emp_id)
@@ -2513,7 +2513,7 @@ pub mod parser {
 
     fn del_emp() -> impl Parser<Item = Tran> {
         let prefix = keyword("DelEmp").skip(spaces());
-        let emp_id = uint32().with(spaces());
+        let emp_id = uint32();
 
         prefix.skip(emp_id).map(|emp_id| Tran::DelEmp { emp_id })
     }
@@ -2559,7 +2559,7 @@ pub mod parser {
         let prefix = keyword("TimeCard").skip(spaces());
         let emp_id = uint32().with(spaces());
         let date = date().with(spaces());
-        let hours = float32().with(spaces());
+        let hours = float32();
 
         prefix
             .skip(emp_id)
@@ -2598,7 +2598,7 @@ pub mod parser {
         let prefix = keyword("SalesReceipt").skip(spaces());
         let emp_id = uint32().with(spaces());
         let date = date().with(spaces());
-        let amount = float32().with(spaces());
+        let amount = float32();
 
         prefix
             .skip(emp_id)
@@ -2637,7 +2637,7 @@ pub mod parser {
         let prefix = keyword("ServiceCharge").skip(spaces());
         let member_id = uint32().with(spaces());
         let date = date().with(spaces());
-        let amount = float32().with(spaces());
+        let amount = float32();
 
         prefix
             .skip(member_id)
@@ -2675,7 +2675,7 @@ pub mod parser {
     fn chg_name() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let name = keyword("Name").skip(spaces()).skip(string()).with(spaces());
+        let name = keyword("Name").skip(spaces()).skip(string());
 
         prefix
             .skip(emp_id)
@@ -2707,10 +2707,7 @@ pub mod parser {
     fn chg_address() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let address = keyword("Address")
-            .skip(spaces())
-            .skip(string())
-            .with(spaces());
+        let address = keyword("Address").skip(spaces()).skip(string());
 
         prefix
             .skip(emp_id)
@@ -2742,10 +2739,7 @@ pub mod parser {
     fn chg_hourly() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let hourly_rate = keyword("Hourly")
-            .skip(spaces())
-            .skip(float32())
-            .with(spaces());
+        let hourly_rate = keyword("Hourly").skip(spaces()).skip(float32());
 
         prefix
             .skip(emp_id)
@@ -2780,10 +2774,7 @@ pub mod parser {
     fn chg_salaried() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let salaried = keyword("Salaried")
-            .skip(spaces())
-            .skip(float32())
-            .with(spaces());
+        let salaried = keyword("Salaried").skip(spaces()).skip(float32());
 
         prefix
             .skip(emp_id)
@@ -2819,7 +2810,7 @@ pub mod parser {
             .skip(spaces())
             .skip(float32())
             .with(spaces());
-        let commission_rate = float32().with(spaces());
+        let commission_rate = float32();
 
         prefix.skip(emp_id).join(salary).join(commission_rate).map(
             |((emp_id, salary), commission_rate)| Tran::ChgCommissioned {
@@ -2855,7 +2846,7 @@ pub mod parser {
     fn chg_hold() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let hold = keyword("Hold").skip(spaces());
+        let hold = keyword("Hold");
 
         prefix
             .skip(emp_id)
@@ -2882,7 +2873,7 @@ pub mod parser {
             .skip(spaces())
             .skip(string())
             .with(spaces());
-        let account = string().with(spaces());
+        let account = string();
 
         prefix
             .skip(emp_id)
@@ -2920,7 +2911,7 @@ pub mod parser {
     fn chg_mail() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let address = keyword("Mail").skip(spaces()).skip(string()).with(spaces());
+        let address = keyword("Mail").skip(spaces()).skip(string());
 
         prefix
             .skip(emp_id)
@@ -2956,10 +2947,7 @@ pub mod parser {
             .skip(spaces())
             .skip(uint32())
             .with(spaces());
-        let dues = keyword("Dues")
-            .skip(spaces())
-            .skip(float32())
-            .with(spaces());
+        let dues = keyword("Dues").skip(spaces()).skip(float32());
 
         prefix
             .skip(emp_id)
@@ -2997,7 +2985,7 @@ pub mod parser {
     fn chg_no_member() -> impl Parser<Item = Tran> {
         let prefix = keyword("ChgEmp").skip(spaces());
         let emp_id = uint32().with(spaces());
-        let no_member = keyword("NoMember").skip(spaces());
+        let no_member = keyword("NoMember");
 
         prefix
             .skip(emp_id)
@@ -3019,7 +3007,7 @@ pub mod parser {
 
     fn payday() -> impl Parser<Item = Tran> {
         let prefix = keyword("Payday").skip(spaces());
-        let date = date().with(spaces());
+        let date = date();
 
         prefix.skip(date).map(|pay_date| Tran::Payday { pay_date })
     }
