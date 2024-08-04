@@ -1323,35 +1323,6 @@ mod classification_tx {
         }
     }
 
-    pub struct HourlyChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeHourlyTransaction<Ctx>,
-    {
-        base: T,
-        phantom: PhantomData<Ctx>,
-    }
-    impl<T, Ctx> HourlyChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeHourlyTransaction<Ctx>,
-    {
-        pub fn new(base: T) -> Self {
-            HourlyChgEmpTxTemplate {
-                base,
-                phantom: PhantomData,
-            }
-        }
-    }
-    impl<T, Ctx> Transaction<Ctx> for HourlyChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeHourlyTransaction<Ctx>,
-    {
-        type Item = ();
-
-        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
-            ChangeHourlyTransaction::<Ctx>::execute(&self.base)
-        }
-    }
-
     pub trait HourlyChangeableEmployee {
         fn get_emp_id(&self) -> EmployeeId;
         fn get_hourly_rate(&self) -> f64;
@@ -1375,14 +1346,6 @@ mod classification_tx {
     impl<T, Ctx> ChangeHourlyTransaction<Ctx> for T where
         T: ChangeClassificationTransaction<Ctx> + HourlyChangeableEmployee
     {
-    }
-    impl<T, Ctx> From<T> for HourlyChgEmpTxTemplate<T, Ctx>
-    where
-        T: ChangeHourlyTransaction<Ctx>,
-    {
-        fn from(base: T) -> Self {
-            HourlyChgEmpTxTemplate::new(base)
-        }
     }
 
     pub trait CommissionedChangeableEmployee {
@@ -3256,12 +3219,11 @@ fn main() {
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
 
-    let req: HourlyChgEmpTxTemplate<_, _> = ChangeHourlyTransactionImpl {
+    let req = ChangeHourlyTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         hourly_rate: 20.00,
-    }
-    .into();
+    };
     let _ = req.execute().run(&mut ()).expect("change hourly");
     println!("change hourly: {:#?}", db);
 
