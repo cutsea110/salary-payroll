@@ -1651,43 +1651,12 @@ use method_tx::*;
 
 mod affiliation_tx {
     use chrono::NaiveDate;
-    use std::marker::PhantomData;
     use tx_rs::Tx;
 
     use crate::affiliation::{NoAffiliation, ServiceCharge, UnionAffiliation};
     use crate::dao::{EmployeeDao, HaveEmployeeDao};
     use crate::domain::{EmployeeId, MemberId};
-    use crate::tx_base::Transaction;
     use crate::tx_base::{ChangeAffiliationTransaction, EmployeeUsecaseError};
-
-    pub struct ServiceChargeableMembTxTemplate<T, Ctx>
-    where
-        T: ServiceChargeTransaction<Ctx>,
-    {
-        base: T,
-        phantom: PhantomData<Ctx>,
-    }
-    impl<T, Ctx> ServiceChargeableMembTxTemplate<T, Ctx>
-    where
-        T: ServiceChargeTransaction<Ctx>,
-    {
-        pub fn new(base: T) -> Self {
-            ServiceChargeableMembTxTemplate {
-                base,
-                phantom: PhantomData,
-            }
-        }
-    }
-    impl<T, Ctx> Transaction<Ctx> for ServiceChargeableMembTxTemplate<T, Ctx>
-    where
-        T: ServiceChargeTransaction<Ctx>,
-    {
-        type Item = ();
-
-        fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = EmployeeUsecaseError> {
-            ServiceChargeTransaction::<Ctx>::execute(&self.base)
-        }
-    }
 
     pub trait ServiceChargeableMember {
         fn get_member_id(&self) -> MemberId;
@@ -1730,14 +1699,6 @@ mod affiliation_tx {
     impl<T, Ctx> ServiceChargeTransaction<Ctx> for T where
         T: HaveEmployeeDao<Ctx> + ServiceChargeableMember
     {
-    }
-    impl<T, Ctx> From<T> for ServiceChargeableMembTxTemplate<T, Ctx>
-    where
-        T: ServiceChargeTransaction<Ctx>,
-    {
-        fn from(base: T) -> Self {
-            ServiceChargeableMembTxTemplate::new(base)
-        }
     }
 
     pub trait UnionChangeableEmployee {
@@ -3510,13 +3471,12 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("change union member");
     println!("change union member: {:#?}", db);
 
-    let req: ServiceChargeableMembTxTemplate<_, _> = ServiceChargeTransactionImpl {
+    let req = ServiceChargeTransactionImpl {
         db: db.clone(),
         member_id: 7734,
         date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
         amount: 12.95,
-    }
-    .into();
+    };
     let _ = req.execute().run(&mut ()).expect("service charge");
     println!("service charge: {:#?}", db);
 
