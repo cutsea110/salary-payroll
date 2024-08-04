@@ -3509,14 +3509,13 @@ fn main() {
     .into();
     let _ = req.execute().run(&mut ()).expect("sales receipt");
 
-    let req: AddSalaryEmpTxTemplate<_, _> = AddSalariedEmployeeTransactionImpl {
+    let req = AddSalariedEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 4,
         name: "Anna".to_string(),
         address: "Home".to_string(),
         salary: 1500.00,
-    }
-    .into();
+    };
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
@@ -3605,24 +3604,22 @@ fn main() {
     println!("remove union member: {:#?}", db);
 
     for emp_id in 1..=4 {
-        let req: DeleteEmpTxTemplate<_, _> = DeleteEmployeeTransactionImpl {
+        let req = DeleteEmployeeTransactionImpl {
             db: db.clone(),
             emp_id,
-        }
-        .into();
+        };
         let _ = req.execute().run(&mut ()).expect("delete employee");
         println!("deleted: {:#?}", db);
     }
 
     // payday
-    let req: AddSalaryEmpTxTemplate<_, _> = AddSalariedEmployeeTransactionImpl {
+    let req = AddSalariedEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 1,
         name: "Bob".to_string(),
         address: "Home".to_string(),
         salary: 1000.00,
-    }
-    .into();
+    };
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
@@ -3649,14 +3646,13 @@ fn main() {
     .into();
     let _ = req.execute().run(&mut ()).expect("delete employee");
 
-    let req: AddHourlyEmpTxTemplate<_, _> = AddHourlyEmployeeTransactionImpl {
+    let req = AddHourlyEmployeeTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         name: "Bill".to_string(),
         address: "Home".to_string(),
         hourly_rate: 15.25,
-    }
-    .into();
+    };
     let emp_id = req.execute().run(&mut ()).expect("add employee");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
@@ -3669,13 +3665,12 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", req.paychecks);
 
-    let req: TimeCardEmpTxTemplate<_, _> = TimeCardTransactionImpl {
+    let req = TimeCardTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         date: NaiveDate::from_ymd_opt(2024, 7, 26).unwrap(),
         hours: 2.0,
-    }
-    .into();
+    };
     let _ = req.execute().run(&mut ()).expect("time card");
 
     let mut req = PaydayTransactionImpl {
@@ -3686,13 +3681,12 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", req.paychecks);
 
-    let req: TimeCardEmpTxTemplate<_, _> = TimeCardTransactionImpl {
+    let req = TimeCardTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
         hours: 9.0,
-    }
-    .into();
+    };
     let _ = req.execute().run(&mut ()).expect("time card");
 
     let mut req = PaydayTransactionImpl {
@@ -3703,13 +3697,12 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", req.paychecks);
 
-    let req: TimeCardEmpTxTemplate<_, _> = TimeCardTransactionImpl {
+    let req = TimeCardTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         date: NaiveDate::from_ymd_opt(2024, 7, 25).unwrap(),
         hours: 5.0,
-    }
-    .into();
+    };
     let _ = req.execute().run(&mut ()).expect("time card");
 
     let mut req = PaydayTransactionImpl {
@@ -3728,13 +3721,12 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", req.paychecks);
 
-    let req: UnionChgMembTxTemplate<_, _> = ChangeUnionMemberTransactionImpl {
+    let req = ChangeUnionMemberTransactionImpl {
         db: db.clone(),
         emp_id: 2,
         member_id: 7734,
         dues: 9.42,
-    }
-    .into();
+    };
     let _ = req.execute().run(&mut ()).expect("change union member");
     println!("emp_id: {:?}", emp_id);
     println!("registered: {:#?}", db);
@@ -3747,13 +3739,12 @@ fn main() {
     let _ = req.execute().run(&mut ()).expect("payday");
     println!("paychecks: {:#?}", req.paychecks);
 
-    let req: ServiceChargeableMembTxTemplate<_, _> = ServiceChargeTransactionImpl {
+    let req = ServiceChargeTransactionImpl {
         db: db.clone(),
         member_id: 7734,
         date: NaiveDate::from_ymd_opt(2024, 8, 9).unwrap(),
         amount: 19.40,
-    }
-    .into();
+    };
     let _ = req.execute().run(&mut ()).expect("service charge");
 
     let mut req = PaydayTransactionImpl {
