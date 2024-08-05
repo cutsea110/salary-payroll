@@ -1,12 +1,71 @@
+use dyn_clone::DynClone;
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
+
+trait PaymentClassification: DynClone + Debug {}
+dyn_clone::clone_trait_object!(PaymentClassification);
+
+#[derive(Debug, Clone)]
+struct SalariedClassification {
+    salary: f64,
+}
+impl PaymentClassification for SalariedClassification {}
+
+trait PaymentSchedule: DynClone + Debug {}
+dyn_clone::clone_trait_object!(PaymentSchedule);
+
+#[derive(Debug, Clone)]
+struct MonthlySchedule {}
+impl PaymentSchedule for MonthlySchedule {}
+
+trait PaymentMethod: DynClone + Debug {}
+dyn_clone::clone_trait_object!(PaymentMethod);
+
+#[derive(Debug, Clone)]
+struct HoldMethod {}
+impl PaymentMethod for HoldMethod {}
+
+trait Affiliation: DynClone + Debug {}
+dyn_clone::clone_trait_object!(Affiliation);
+#[derive(Debug, Clone)]
+struct NoAffiliation {}
+impl Affiliation for NoAffiliation {}
+
 type EmployeeId = u32;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Employee {
-    id: EmployeeId,
+    emp_id: EmployeeId,
     name: String,
+    address: String,
+
+    classification: Box<dyn PaymentClassification>,
+    schedule: Box<dyn PaymentSchedule>,
+    method: Box<dyn PaymentMethod>,
+    affiliation: Box<dyn Affiliation>,
+}
+impl Employee {
+    fn new(
+        emp_id: EmployeeId,
+        name: &str,
+        address: &str,
+        classification: Box<dyn PaymentClassification>,
+        schedule: Box<dyn PaymentSchedule>,
+        method: Box<dyn PaymentMethod>,
+        affiliation: Box<dyn Affiliation>,
+    ) -> Self {
+        Self {
+            emp_id,
+            name: name.to_string(),
+            address: address.to_string(),
+            classification,
+            schedule,
+            method,
+            affiliation,
+        }
+    }
 }
 
 trait Dao {
-    fn insert(&self, emp: &Employee);
+    fn insert(&self, emp_id: EmployeeId, emp: Employee);
 }
 
 trait HaveDao {
@@ -16,23 +75,24 @@ trait HaveDao {
 trait Transaction {
     fn execute(&self);
 }
-struct AddEmployeeTransaction<T>
+struct AddSalariedEmployeeTransaction<T>
 where
     T: Dao,
 {
     dao: T,
 
+    emp_id: EmployeeId,
     emp: Employee,
 }
-impl<T> AddEmployeeTransaction<T>
+impl<T> AddSalariedEmployeeTransaction<T>
 where
     T: Dao,
 {
-    fn new(dao: T, emp: Employee) -> Self {
-        Self { dao, emp }
+    fn new(dao: T, emp_id: EmployeeId, emp: Employee) -> Self {
+        Self { dao, emp_id, emp }
     }
 }
-impl<T> HaveDao for AddEmployeeTransaction<T>
+impl<T> HaveDao for AddSalariedEmployeeTransaction<T>
 where
     T: Dao,
 {
@@ -41,32 +101,50 @@ where
         &self.dao
     }
 }
-impl<T> Transaction for AddEmployeeTransaction<T>
+impl<T> Transaction for AddSalariedEmployeeTransaction<T>
 where
     T: Dao,
 {
     fn execute(&self) {
-        self.get_dao().insert(&self.emp);
+        self.get_dao().insert(self.emp_id, self.emp.clone());
     }
 }
 
-#[derive(Clone)]
-struct DumyDao;
-impl Dao for DumyDao {
-    fn insert(&self, emp: &Employee) {
-        println!("insert: {:?}", emp);
+#[derive(Debug, Clone)]
+struct MockDb {
+    employees: Rc<RefCell<HashMap<EmployeeId, Employee>>>,
+}
+impl MockDb {
+    fn new() -> Self {
+        Self {
+            employees: Rc::new(RefCell::new(HashMap::new())),
+        }
+    }
+}
+impl Dao for MockDb {
+    fn insert(&self, emp_id: EmployeeId, emp: Employee) {
+        self.employees.borrow_mut().insert(emp_id, emp);
     }
 }
 
 fn main() {
-    let tx = AddEmployeeTransaction::new(
-        DumyDao,
-        Employee {
-            id: 1,
-            name: "Bob".to_string(),
-        },
+    let db = MockDb::new();
+    let emp_id = 42;
+    let tx = AddSalariedEmployeeTransaction::new(
+        db.clone(),
+        emp_id,
+        Employee::new(
+            emp_id,
+            "Bob",
+            "Home",
+            Box::new(SalariedClassification { salary: 1008.75 }),
+            Box::new(MonthlySchedule {}),
+            Box::new(HoldMethod {}),
+            Box::new(NoAffiliation {}),
+        ),
     );
     tx.execute();
+    println!("{:#?}", db);
 }
 
 /*
