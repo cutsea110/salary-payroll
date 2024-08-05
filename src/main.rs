@@ -1,3 +1,75 @@
+type EmployeeId = u32;
+#[derive(Debug)]
+struct Employee {
+    id: EmployeeId,
+    name: String,
+}
+
+trait Dao {
+    fn insert(&self, emp: &Employee);
+}
+
+trait HaveDao {
+    type T: Dao;
+    fn get_dao(&self) -> &Self::T;
+}
+trait Transaction {
+    fn execute(&self);
+}
+struct AddEmployeeTransaction<T>
+where
+    T: Dao,
+{
+    dao: T,
+
+    emp: Employee,
+}
+impl<T> AddEmployeeTransaction<T>
+where
+    T: Dao,
+{
+    fn new(dao: T, emp: Employee) -> Self {
+        Self { dao, emp }
+    }
+}
+impl<T> HaveDao for AddEmployeeTransaction<T>
+where
+    T: Dao,
+{
+    type T = T;
+    fn get_dao(&self) -> &Self::T {
+        &self.dao
+    }
+}
+impl<T> Transaction for AddEmployeeTransaction<T>
+where
+    T: Dao,
+{
+    fn execute(&self) {
+        self.get_dao().insert(&self.emp);
+    }
+}
+
+#[derive(Clone)]
+struct DumyDao;
+impl Dao for DumyDao {
+    fn insert(&self, emp: &Employee) {
+        println!("insert: {:?}", emp);
+    }
+}
+
+fn main() {
+    let tx = AddEmployeeTransaction::new(
+        DumyDao,
+        Employee {
+            id: 1,
+            name: "Bob".to_string(),
+        },
+    );
+    tx.execute();
+}
+
+/*
 use chrono::NaiveDate;
 use core::fmt::Debug;
 use tx_rs::Tx;
@@ -3159,3 +3231,4 @@ fn main() {
     let mut app = PayrollApp::new("script/test.scr");
     app.run_on();
 }
+*/
