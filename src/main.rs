@@ -7,10 +7,10 @@ trait PaymentClassification: DynClone + Debug {}
 dyn_clone::clone_trait_object!(PaymentClassification);
 
 #[derive(Debug, Clone)]
-struct SalariedClassification {
+struct SalaryClassification {
     salary: f64,
 }
-impl PaymentClassification for SalariedClassification {}
+impl PaymentClassification for SalaryClassification {}
 
 trait PaymentSchedule: DynClone + Debug {}
 dyn_clone::clone_trait_object!(PaymentSchedule);
@@ -96,7 +96,7 @@ trait Transaction<Ctx> {
 
     fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = UsecaseError>;
 }
-struct AddSalariedEmployeeTransaction<Ctx, T>
+struct AddSalaryEmployeeTransaction<Ctx, T>
 where
     T: Dao<Ctx>,
 {
@@ -106,7 +106,7 @@ where
     emp_id: EmployeeId,
     emp: Employee,
 }
-impl<Ctx, T> AddSalariedEmployeeTransaction<Ctx, T>
+impl<Ctx, T> AddSalaryEmployeeTransaction<Ctx, T>
 where
     T: Dao<Ctx>,
 {
@@ -119,7 +119,7 @@ where
         }
     }
 }
-impl<Ctx, T> HaveDao<Ctx> for AddSalariedEmployeeTransaction<Ctx, T>
+impl<Ctx, T> HaveDao<Ctx> for AddSalaryEmployeeTransaction<Ctx, T>
 where
     T: Dao<Ctx>,
 {
@@ -128,7 +128,7 @@ where
         &self.dao
     }
 }
-impl<Ctx, T> Transaction<Ctx> for AddSalariedEmployeeTransaction<Ctx, T>
+impl<Ctx, T> Transaction<Ctx> for AddSalaryEmployeeTransaction<Ctx, T>
 where
     T: Dao<Ctx>,
 {
@@ -171,14 +171,14 @@ impl Dao<()> for MockDb {
 fn main() {
     let db = MockDb::new();
     let emp_id = 42;
-    let tx = AddSalariedEmployeeTransaction::new(
+    let tx = AddSalaryEmployeeTransaction::new(
         db.clone(),
         emp_id,
         Employee::new(
             emp_id,
             "Bob",
             "Home",
-            Box::new(SalariedClassification { salary: 1008.75 }),
+            Box::new(SalaryClassification { salary: 1008.75 }),
             Box::new(MonthlySchedule {}),
             Box::new(HoldMethod {}),
             Box::new(NoAffiliation {}),
