@@ -1,5 +1,7 @@
 use dyn_clone::DynClone;
-use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, marker::PhantomData, rc::Rc};
+use thiserror::Error;
+use tx_rs::Tx;
 
 trait PaymentClassification: DynClone + Debug {}
 dyn_clone::clone_trait_object!(PaymentClassification);
@@ -64,49 +66,78 @@ impl Employee {
     }
 }
 
-trait Dao {
-    fn insert(&self, emp_id: EmployeeId, emp: Employee);
+#[derive(Error, Debug, Clone)]
+enum DaoError {
+    #[error("dummy")]
+    Dummy,
 }
 
-trait HaveDao {
-    type T: Dao;
+trait Dao<Ctx> {
+    fn insert(
+        &self,
+        emp_id: EmployeeId,
+        emp: Employee,
+    ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = DaoError>;
+}
+
+trait HaveDao<Ctx> {
+    type T: Dao<Ctx>;
     fn get_dao(&self) -> &Self::T;
 }
-trait Transaction {
-    fn execute(&self);
+
+#[derive(Error, Debug, Clone)]
+enum UsecaseError {
+    #[error("dummy")]
+    Dummy,
 }
-struct AddSalariedEmployeeTransaction<T>
+
+trait Transaction<Ctx> {
+    type Item;
+
+    fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = UsecaseError>;
+}
+struct AddSalariedEmployeeTransaction<Ctx, T>
 where
-    T: Dao,
+    T: Dao<Ctx>,
 {
+    _phantom: PhantomData<Ctx>,
     dao: T,
 
     emp_id: EmployeeId,
     emp: Employee,
 }
-impl<T> AddSalariedEmployeeTransaction<T>
+impl<Ctx, T> AddSalariedEmployeeTransaction<Ctx, T>
 where
-    T: Dao,
+    T: Dao<Ctx>,
 {
     fn new(dao: T, emp_id: EmployeeId, emp: Employee) -> Self {
-        Self { dao, emp_id, emp }
+        Self {
+            _phantom: PhantomData,
+            dao,
+            emp_id,
+            emp,
+        }
     }
 }
-impl<T> HaveDao for AddSalariedEmployeeTransaction<T>
+impl<Ctx, T> HaveDao<Ctx> for AddSalariedEmployeeTransaction<Ctx, T>
 where
-    T: Dao,
+    T: Dao<Ctx>,
 {
     type T = T;
     fn get_dao(&self) -> &Self::T {
         &self.dao
     }
 }
-impl<T> Transaction for AddSalariedEmployeeTransaction<T>
+impl<Ctx, T> Transaction<Ctx> for AddSalariedEmployeeTransaction<Ctx, T>
 where
-    T: Dao,
+    T: Dao<Ctx>,
 {
-    fn execute(&self) {
-        self.get_dao().insert(self.emp_id, self.emp.clone());
+    type Item = EmployeeId;
+
+    fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = UsecaseError> {
+        self.get_dao()
+            .insert(self.emp_id, self.emp.clone())
+            .map_err(|_| UsecaseError::Dummy)
     }
 }
 
@@ -121,9 +152,16 @@ impl MockDb {
         }
     }
 }
-impl Dao for MockDb {
-    fn insert(&self, emp_id: EmployeeId, emp: Employee) {
-        self.employees.borrow_mut().insert(emp_id, emp);
+impl Dao<()> for MockDb {
+    fn insert(
+        &self,
+        emp_id: EmployeeId,
+        emp: Employee,
+    ) -> impl Tx<(), Item = EmployeeId, Err = DaoError> {
+        tx_rs::with_tx(move |_| {
+            self.employees.borrow_mut().insert(emp_id, emp);
+            Ok(emp_id)
+        })
     }
 }
 
@@ -143,7 +181,7 @@ fn main() {
             Box::new(NoAffiliation {}),
         ),
     );
-    tx.execute();
+    let _ = tx.execute().run(&mut ());
     println!("{:#?}", db);
 }
 
