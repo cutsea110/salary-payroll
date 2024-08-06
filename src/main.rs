@@ -68,8 +68,8 @@ impl Employee {
 
 #[derive(Error, Debug, Clone)]
 enum DaoError {
-    #[error("dummy")]
-    Dummy,
+    #[error("employee id already exists: {0}")]
+    EmployeeIdAlreadyExists(EmployeeId),
 }
 
 trait Dao<Ctx> {
@@ -87,8 +87,8 @@ trait HaveDao<Ctx> {
 
 #[derive(Error, Debug, Clone)]
 enum UsecaseError {
-    #[error("dummy")]
-    Dummy,
+    #[error("register employee error: {0}")]
+    RegisterEmployeeError(DaoError),
 }
 
 trait Transaction<Ctx> {
@@ -137,7 +137,7 @@ where
     fn execute(&self) -> impl tx_rs::Tx<Ctx, Item = Self::Item, Err = UsecaseError> {
         self.get_dao()
             .insert(self.emp_id, self.emp.clone())
-            .map_err(|_| UsecaseError::Dummy)
+            .map_err(UsecaseError::RegisterEmployeeError)
     }
 }
 
@@ -159,6 +159,9 @@ impl Dao<()> for MockDb {
         emp: Employee,
     ) -> impl Tx<(), Item = EmployeeId, Err = DaoError> {
         tx_rs::with_tx(move |_| {
+            if self.employees.borrow().contains_key(&emp_id) {
+                return Err(DaoError::EmployeeIdAlreadyExists(emp_id));
+            }
             self.employees.borrow_mut().insert(emp_id, emp);
             Ok(emp_id)
         })
