@@ -1,3 +1,4 @@
+/*
 use dyn_clone::DynClone;
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, marker::PhantomData, rc::Rc};
 use thiserror::Error;
@@ -187,8 +188,8 @@ fn main() {
     let _ = tx.execute().run(&mut ());
     println!("{:#?}", db);
 }
+*/
 
-/*
 use chrono::NaiveDate;
 use core::fmt::Debug;
 use tx_rs::Tx;
@@ -1974,7 +1975,7 @@ impl UnionChangeableEmployee for ChangeUnionMemberTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
     }
-    fn get_member_id(&self) -> EmployeeId {
+    fn get_member_id(&self) -> MemberId {
         self.member_id
     }
     fn get_dues(&self) -> f32 {
@@ -3350,4 +3351,3 @@ fn main() {
     let mut app = PayrollApp::new("script/test.scr");
     app.run_on();
 }
-*/
