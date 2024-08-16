@@ -1,8 +1,3 @@
-fn main() {
-    println!("Hello, world!");
-}
-
-/*
 use chrono::NaiveDate;
 use core::fmt::Debug;
 use tx_rs::Tx;
@@ -3164,4 +3159,3 @@ fn main() {
     let mut app = PayrollApp::new("script/test.scr");
     app.run_on();
 }
-*/
