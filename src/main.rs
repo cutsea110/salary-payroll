@@ -9,12 +9,20 @@ struct SalariedClassification {
     salary: f32,
 }
 impl PaymentClassification for SalariedClassification {}
+#[derive(Debug, Clone)]
+struct HourlyClassification {
+    hourly_rate: f32,
+}
+impl PaymentClassification for HourlyClassification {}
 
 trait PaymentSchedule: DynClone + Debug {}
 dyn_clone::clone_trait_object!(PaymentSchedule);
 #[derive(Debug, Clone)]
 struct MonthlySchedule {}
 impl PaymentSchedule for MonthlySchedule {}
+#[derive(Debug, Clone)]
+struct WeeklySchedule {}
+impl PaymentSchedule for WeeklySchedule {}
 
 trait PaymentMethod: DynClone + Debug {}
 dyn_clone::clone_trait_object!(PaymentMethod);
@@ -44,14 +52,21 @@ trait Transaction {
 }
 
 trait AddEmployeeTransaction: HaveDao {
+    fn get_id(&self) -> u32;
+    fn get_name(&self) -> &str;
+
     fn get_classification(&self) -> Box<dyn PaymentClassification>;
     fn get_schedule(&self) -> Box<dyn PaymentSchedule>;
     fn exec_tx(&self) {
+        let id = self.get_id();
+        let name = self.get_name();
+
         let pc = self.get_classification();
         let ps = self.get_schedule();
         let employee = Employee {
-            id: 1,
-            name: "Bob".to_string(),
+            id,
+            name: name.to_string(),
+
             classification: pc,
             schedule: ps,
             method: Box::new(HoldMethod {}),
@@ -97,6 +112,12 @@ impl<DB> AddEmployeeTransaction for AddSalariedEmployee<DB>
 where
     DB: Dao + Clone,
 {
+    fn get_id(&self) -> u32 {
+        self.id
+    }
+    fn get_name(&self) -> &str {
+        &self.name
+    }
     fn get_classification(&self) -> Box<dyn PaymentClassification> {
         Box::new(SalariedClassification {
             salary: self.salary,
@@ -112,18 +133,75 @@ impl Transaction for AddSalariedEmployee<GPayrollDatabase> {
     }
 }
 
+#[derive(Debug, Clone)]
+struct AddHourlyEmployee<DB>
+where
+    DB: Dao + Clone,
+{
+    db: DB,
+
+    id: u32,
+    name: String,
+    hourly_rate: f32,
+}
+impl<DB> HaveDao for AddHourlyEmployee<DB>
+where
+    DB: Dao + Clone,
+{
+    fn get_dao(&self) -> impl Dao {
+        self.db.clone()
+    }
+}
+impl<DB> AddEmployeeTransaction for AddHourlyEmployee<DB>
+where
+    DB: Dao + Clone,
+{
+    fn get_id(&self) -> u32 {
+        self.id
+    }
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+    fn get_classification(&self) -> Box<dyn PaymentClassification> {
+        Box::new(HourlyClassification {
+            hourly_rate: self.hourly_rate,
+        })
+    }
+    fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
+        Box::new(WeeklySchedule {})
+    }
+}
+impl Transaction for AddHourlyEmployee<GPayrollDatabase> {
+    fn execute(&self) {
+        AddEmployeeTransaction::exec_tx(self);
+    }
+}
+
 fn main() {
     let db = GPayrollDatabase {
         db: Rc::new(RefCell::new(HashMap::new())),
     };
-    let tx = AddSalariedEmployee {
+
+    let tx1 = AddSalariedEmployee {
         db: db.clone(),
 
         id: 1,
         name: "Bob".to_string(),
         salary: 1000.0,
     };
-    tx.execute();
+    println!("{:#?}", tx1);
+    tx1.execute();
+    println!("{:#?}", db);
+
+    let tx2 = AddHourlyEmployee {
+        db: db.clone(),
+
+        id: 2,
+        name: "Alice".to_string(),
+        hourly_rate: 10.0,
+    };
+    println!("{:#?}", tx2);
+    tx2.execute();
     println!("{:#?}", db);
 }
 
