@@ -1,3 +1,133 @@
+use dyn_clone::DynClone;
+use std::fmt::Debug;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
+
+trait PaymentClassification: DynClone + Debug {}
+dyn_clone::clone_trait_object!(PaymentClassification);
+#[derive(Debug, Clone)]
+struct SalariedClassification {
+    salary: f32,
+}
+impl PaymentClassification for SalariedClassification {}
+
+trait PaymentSchedule: DynClone + Debug {}
+dyn_clone::clone_trait_object!(PaymentSchedule);
+#[derive(Debug, Clone)]
+struct MonthlySchedule {}
+impl PaymentSchedule for MonthlySchedule {}
+
+trait PaymentMethod: DynClone + Debug {}
+dyn_clone::clone_trait_object!(PaymentMethod);
+#[derive(Debug, Clone)]
+struct HoldMethod {}
+impl PaymentMethod for HoldMethod {}
+
+#[derive(Debug, Clone)]
+struct Employee {
+    id: u32,
+    name: String,
+    classification: Box<dyn PaymentClassification>,
+    schedule: Box<dyn PaymentSchedule>,
+    method: Box<dyn PaymentMethod>,
+}
+
+trait Dao {
+    fn add_employee(&self, employee: Employee);
+    fn get_employee(&self, id: u32) -> Option<Employee>;
+}
+trait HaveDao {
+    fn get_dao(&self) -> impl Dao;
+}
+
+trait Transaction {
+    fn execute(&self);
+}
+
+trait AddEmployeeTransaction: HaveDao {
+    fn get_classification(&self) -> Box<dyn PaymentClassification>;
+    fn get_schedule(&self) -> Box<dyn PaymentSchedule>;
+    fn exec_tx(&self) {
+        let pc = self.get_classification();
+        let ps = self.get_schedule();
+        let employee = Employee {
+            id: 1,
+            name: "Bob".to_string(),
+            classification: pc,
+            schedule: ps,
+            method: Box::new(HoldMethod {}),
+        };
+        let dao = self.get_dao();
+        dao.add_employee(employee);
+    }
+}
+
+#[derive(Debug, Clone)]
+struct GPayrollDatabase {
+    db: Rc<RefCell<HashMap<u32, Employee>>>,
+}
+impl Dao for GPayrollDatabase {
+    fn add_employee(&self, employee: Employee) {
+        self.db.borrow_mut().insert(employee.id, employee);
+    }
+    fn get_employee(&self, id: u32) -> Option<Employee> {
+        self.db.borrow().get(&id).cloned()
+    }
+}
+
+#[derive(Debug, Clone)]
+struct AddSalariedEmployee<DB>
+where
+    DB: Dao + Clone,
+{
+    db: DB,
+
+    id: u32,
+    name: String,
+    salary: f32,
+}
+impl<DB> HaveDao for AddSalariedEmployee<DB>
+where
+    DB: Dao + Clone,
+{
+    fn get_dao(&self) -> impl Dao {
+        self.db.clone()
+    }
+}
+impl<DB> AddEmployeeTransaction for AddSalariedEmployee<DB>
+where
+    DB: Dao + Clone,
+{
+    fn get_classification(&self) -> Box<dyn PaymentClassification> {
+        Box::new(SalariedClassification {
+            salary: self.salary,
+        })
+    }
+    fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
+        Box::new(MonthlySchedule {})
+    }
+}
+impl Transaction for AddSalariedEmployee<GPayrollDatabase> {
+    fn execute(&self) {
+        AddEmployeeTransaction::exec_tx(self);
+    }
+}
+
+fn main() {
+    let db = GPayrollDatabase {
+        db: Rc::new(RefCell::new(HashMap::new())),
+    };
+    let tx = AddSalariedEmployee {
+        db: db.clone(),
+
+        id: 1,
+        name: "Bob".to_string(),
+        salary: 1000.0,
+    };
+    tx.execute();
+    println!("{:#?}", db);
+}
+
+/*
 use chrono::NaiveDate;
 use core::fmt::Debug;
 use tx_rs::Tx;
@@ -3159,3 +3289,4 @@ fn main() {
     let mut app = PayrollApp::new("script/test.scr");
     app.run_on();
 }
+*/
