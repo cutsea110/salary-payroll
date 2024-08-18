@@ -1,6 +1,14 @@
 use dyn_clone::DynClone;
 use std::fmt::Debug;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use thiserror::Error;
+use tx_rs::Tx;
+
+#[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DaoError {
+    #[error("dummy")]
+    Dummy,
+}
 
 trait PaymentClassification: DynClone + Debug {}
 dyn_clone::clone_trait_object!(PaymentClassification);
@@ -70,7 +78,7 @@ trait AddEmployeeTransaction: HaveDao {
 
     fn get_classification(&self) -> Box<dyn PaymentClassification>;
     fn get_schedule(&self) -> Box<dyn PaymentSchedule>;
-    fn exec_tx(&self) {
+    fn exec_tx<Ctx>(&self) -> impl tx_rs::Tx<Ctx, Item = u32, Err = DaoError> {
         let id = self.get_id();
         let name = self.get_name();
         let address = self.get_address();
@@ -86,8 +94,11 @@ trait AddEmployeeTransaction: HaveDao {
             schedule: ps,
             method: Box::new(HoldMethod {}),
         };
-        let dao = self.get_dao();
-        dao.add_employee(employee);
+        tx_rs::with_tx(move |_| {
+            let dao = self.get_dao();
+            dao.add_employee(employee);
+            Ok(id)
+        })
     }
 }
 
@@ -149,12 +160,10 @@ where
         Box::new(MonthlySchedule {})
     }
 }
-impl<DB> Transaction for AddSalariedEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
+impl Transaction for AddSalariedEmployeeTransaction<GPayrollDatabase> {
     fn execute(&self) {
-        AddEmployeeTransaction::exec_tx(self);
+        // TODO: ここ run_tx 的なやつでラップしたい
+        let _ = AddEmployeeTransaction::exec_tx(self).run(&mut ());
     }
 }
 
@@ -200,12 +209,10 @@ where
         Box::new(WeeklySchedule {})
     }
 }
-impl<DB> Transaction for AddHourlyEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
+impl Transaction for AddHourlyEmployeeTransaction<GPayrollDatabase> {
     fn execute(&self) {
-        AddEmployeeTransaction::exec_tx(self);
+        // TODO: ここ run_tx 的なやつでラップしたい
+        let _ = AddEmployeeTransaction::exec_tx(self).run(&mut ());
     }
 }
 
@@ -253,12 +260,10 @@ where
         Box::new(BiweeklySchedule {})
     }
 }
-impl<DB> Transaction for AddCommissionedEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
+impl Transaction for AddCommissionedEmployeeTransaction<GPayrollDatabase> {
     fn execute(&self) {
-        AddEmployeeTransaction::exec_tx(self);
+        // TODO: ここ run_tx 的なやつでラップしたい
+        let _ = AddEmployeeTransaction::exec_tx(self).run(&mut ());
     }
 }
 
@@ -279,12 +284,14 @@ where
         self.db.clone()
     }
 }
-impl<DB> Transaction for DeleteEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
+impl Transaction for DeleteEmployeeTransaction<GPayrollDatabase> {
     fn execute(&self) {
-        self.get_dao().delete_employee(self.id);
+        // TODO: ここ run_tx 的なやつでラップしたい
+        let _ = tx_rs::with_tx(|_| {
+            self.get_dao().delete_employee(self.id);
+            Ok::<(), DaoError>(())
+        })
+        .run(&mut ());
     }
 }
 
