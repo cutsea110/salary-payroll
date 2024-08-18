@@ -14,6 +14,12 @@ struct HourlyClassification {
     hourly_rate: f32,
 }
 impl PaymentClassification for HourlyClassification {}
+#[derive(Debug, Clone)]
+struct CommissionedClassification {
+    salary: f32,
+    commission_rate: f32,
+}
+impl PaymentClassification for CommissionedClassification {}
 
 trait PaymentSchedule: DynClone + Debug {}
 dyn_clone::clone_trait_object!(PaymentSchedule);
@@ -23,6 +29,9 @@ impl PaymentSchedule for MonthlySchedule {}
 #[derive(Debug, Clone)]
 struct WeeklySchedule {}
 impl PaymentSchedule for WeeklySchedule {}
+#[derive(Debug, Clone)]
+struct BiweeklySchedule {}
+impl PaymentSchedule for BiweeklySchedule {}
 
 trait PaymentMethod: DynClone + Debug {}
 dyn_clone::clone_trait_object!(PaymentMethod);
@@ -177,31 +186,86 @@ impl Transaction for AddHourlyEmployee<GPayrollDatabase> {
     }
 }
 
+#[derive(Debug, Clone)]
+struct AddCommissionedEmployee<DB>
+where
+    DB: Dao + Clone,
+{
+    db: DB,
+
+    id: u32,
+    name: String,
+    salary: f32,
+    commission_rate: f32,
+}
+impl<DB> HaveDao for AddCommissionedEmployee<DB>
+where
+    DB: Dao + Clone,
+{
+    fn get_dao(&self) -> impl Dao {
+        self.db.clone()
+    }
+}
+impl<DB> AddEmployeeTransaction for AddCommissionedEmployee<DB>
+where
+    DB: Dao + Clone,
+{
+    fn get_id(&self) -> u32 {
+        self.id
+    }
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+    fn get_classification(&self) -> Box<dyn PaymentClassification> {
+        Box::new(CommissionedClassification {
+            salary: self.salary,
+            commission_rate: self.commission_rate,
+        })
+    }
+    fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
+        Box::new(BiweeklySchedule {})
+    }
+}
+impl Transaction for AddCommissionedEmployee<GPayrollDatabase> {
+    fn execute(&self) {
+        AddEmployeeTransaction::exec_tx(self);
+    }
+}
+
 fn main() {
     let db = GPayrollDatabase {
         db: Rc::new(RefCell::new(HashMap::new())),
     };
 
-    let tx1 = AddSalariedEmployee {
+    let tx: Box<dyn Transaction> = Box::new(AddSalariedEmployee {
         db: db.clone(),
 
         id: 1,
         name: "Bob".to_string(),
         salary: 1000.0,
-    };
-    println!("{:#?}", tx1);
-    tx1.execute();
+    });
+    tx.execute();
     println!("{:#?}", db);
 
-    let tx2 = AddHourlyEmployee {
+    let tx: Box<dyn Transaction> = Box::new(AddHourlyEmployee {
         db: db.clone(),
 
         id: 2,
         name: "Alice".to_string(),
         hourly_rate: 10.0,
-    };
-    println!("{:#?}", tx2);
-    tx2.execute();
+    });
+    tx.execute();
+    println!("{:#?}", db);
+
+    let tx: Box<dyn Transaction> = Box::new(AddCommissionedEmployee {
+        db: db.clone(),
+
+        id: 3,
+        name: "Charlie".to_string(),
+        salary: 1000.0,
+        commission_rate: 0.1,
+    });
+    tx.execute();
     println!("{:#?}", db);
 }
 
