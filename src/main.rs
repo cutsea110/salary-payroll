@@ -51,6 +51,7 @@ struct Employee {
 trait Dao {
     fn add_employee(&self, employee: Employee);
     fn get_employee(&self, id: u32) -> Option<Employee>;
+    fn delete_employee(&self, id: u32);
 }
 trait HaveDao {
     fn get_dao(&self) -> impl Dao;
@@ -95,6 +96,9 @@ impl Dao for GPayrollDatabase {
     }
     fn get_employee(&self, id: u32) -> Option<Employee> {
         self.db.borrow().get(&id).cloned()
+    }
+    fn delete_employee(&self, id: u32) {
+        self.db.borrow_mut().remove(&id);
     }
 }
 
@@ -187,6 +191,32 @@ impl Transaction for AddHourlyEmployee<GPayrollDatabase> {
 }
 
 #[derive(Debug, Clone)]
+struct DeleteEmployeeTransaction<DB>
+where
+    DB: Dao + Clone,
+{
+    db: DB,
+
+    id: u32,
+}
+impl<DB> HaveDao for DeleteEmployeeTransaction<DB>
+where
+    DB: Dao + Clone,
+{
+    fn get_dao(&self) -> impl Dao {
+        self.db.clone()
+    }
+}
+impl<DB> Transaction for DeleteEmployeeTransaction<DB>
+where
+    DB: Dao + Clone,
+{
+    fn execute(&self) {
+        self.get_dao().delete_employee(self.id);
+    }
+}
+
+#[derive(Debug, Clone)]
 struct AddCommissionedEmployee<DB>
 where
     DB: Dao + Clone,
@@ -267,6 +297,16 @@ fn main() {
     });
     tx.execute();
     println!("{:#?}", db);
+
+    for i in 1..=3 {
+        let tx: Box<dyn Transaction> = Box::new(DeleteEmployeeTransaction {
+            db: db.clone(),
+
+            id: i,
+        });
+        tx.execute();
+        println!("{:#?}", db);
+    }
 }
 
 /*
