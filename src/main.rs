@@ -43,6 +43,8 @@ impl PaymentMethod for HoldMethod {}
 struct Employee {
     id: u32,
     name: String,
+    address: String,
+
     classification: Box<dyn PaymentClassification>,
     schedule: Box<dyn PaymentSchedule>,
     method: Box<dyn PaymentMethod>,
@@ -64,18 +66,21 @@ trait Transaction {
 trait AddEmployeeTransaction: HaveDao {
     fn get_id(&self) -> u32;
     fn get_name(&self) -> &str;
+    fn get_address(&self) -> &str;
 
     fn get_classification(&self) -> Box<dyn PaymentClassification>;
     fn get_schedule(&self) -> Box<dyn PaymentSchedule>;
     fn exec_tx(&self) {
         let id = self.get_id();
         let name = self.get_name();
+        let address = self.get_address();
 
         let pc = self.get_classification();
         let ps = self.get_schedule();
         let employee = Employee {
             id,
             name: name.to_string(),
+            address: address.to_string(),
 
             classification: pc,
             schedule: ps,
@@ -111,6 +116,7 @@ where
 
     id: u32,
     name: String,
+    address: String,
     salary: f32,
 }
 impl<DB> HaveDao for AddSalariedEmployeeTransaction<DB>
@@ -130,6 +136,9 @@ where
     }
     fn get_name(&self) -> &str {
         &self.name
+    }
+    fn get_address(&self) -> &str {
+        &self.address
     }
     fn get_classification(&self) -> Box<dyn PaymentClassification> {
         Box::new(SalariedClassification {
@@ -158,6 +167,7 @@ where
 
     id: u32,
     name: String,
+    address: String,
     hourly_rate: f32,
 }
 impl<DB> HaveDao for AddHourlyEmployeeTransaction<DB>
@@ -177,6 +187,9 @@ where
     }
     fn get_name(&self) -> &str {
         &self.name
+    }
+    fn get_address(&self) -> &str {
+        &self.address
     }
     fn get_classification(&self) -> Box<dyn PaymentClassification> {
         Box::new(HourlyClassification {
@@ -205,6 +218,7 @@ where
 
     id: u32,
     name: String,
+    address: String,
     salary: f32,
     commission_rate: f32,
 }
@@ -225,6 +239,9 @@ where
     }
     fn get_name(&self) -> &str {
         &self.name
+    }
+    fn get_address(&self) -> &str {
+        &self.address
     }
     fn get_classification(&self) -> Box<dyn PaymentClassification> {
         Box::new(CommissionedClassification {
@@ -281,6 +298,7 @@ fn main() {
 
         id: 1,
         name: "Bob".to_string(),
+        address: "Home".to_string(),
         salary: 1000.0,
     });
     tx.execute();
@@ -291,6 +309,7 @@ fn main() {
 
         id: 2,
         name: "Alice".to_string(),
+        address: "Office".to_string(),
         hourly_rate: 10.0,
     });
     tx.execute();
@@ -301,6 +320,7 @@ fn main() {
 
         id: 3,
         name: "Charlie".to_string(),
+        address: "Wall St.".to_string(),
         salary: 1000.0,
         commission_rate: 0.1,
     });
