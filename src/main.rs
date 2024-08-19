@@ -9,6 +9,11 @@ pub enum DaoError {
     #[error("dummy")]
     Dummy,
 }
+#[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum UsecaseError {
+    #[error("dummy: {0}")]
+    Dummy(DaoError),
+}
 
 trait PaymentClassification: DynClone + Debug {}
 dyn_clone::clone_trait_object!(PaymentClassification);
@@ -66,9 +71,20 @@ trait Dao {
 trait HaveDao {
     fn get_dao(&self) -> impl Dao;
 }
+trait Transactional {
+    type Ctx;
+    type Item;
 
+    fn run_tx(
+        &self,
+        f: impl FnOnce(&mut Self::Ctx) -> Result<Self::Item, DaoError>,
+    ) -> Result<Self::Item, UsecaseError>;
+}
 trait Transaction {
-    fn execute(&self);
+    type Ctx;
+    type Item;
+
+    fn execute(&self) -> Result<Self::Item, UsecaseError>;
 }
 
 trait AddEmployeeTransaction: HaveDao {
@@ -160,10 +176,24 @@ where
         Box::new(MonthlySchedule {})
     }
 }
+impl Transactional for AddSalariedEmployeeTransaction<GPayrollDatabase> {
+    type Ctx = ();
+    type Item = u32;
+
+    fn run_tx(
+        &self,
+        f: impl FnOnce(&mut ()) -> Result<Self::Item, DaoError>,
+    ) -> Result<Self::Item, UsecaseError> {
+        let mut tx = ();
+        f(&mut tx).map_err(UsecaseError::Dummy)
+    }
+}
 impl Transaction for AddSalariedEmployeeTransaction<GPayrollDatabase> {
-    fn execute(&self) {
-        // TODO: ここ run_tx 的なやつでラップしたい
-        let _ = AddEmployeeTransaction::exec_tx(self).run(&mut ());
+    type Ctx = ();
+    type Item = u32;
+
+    fn execute(&self) -> Result<Self::Item, UsecaseError> {
+        self.run_tx(|ctx| AddEmployeeTransaction::exec_tx(self).run(ctx))
     }
 }
 
@@ -209,10 +239,24 @@ where
         Box::new(WeeklySchedule {})
     }
 }
+impl Transactional for AddHourlyEmployeeTransaction<GPayrollDatabase> {
+    type Ctx = ();
+    type Item = u32;
+
+    fn run_tx(
+        &self,
+        f: impl FnOnce(&mut ()) -> Result<Self::Item, DaoError>,
+    ) -> Result<Self::Item, UsecaseError> {
+        let mut tx = ();
+        f(&mut tx).map_err(UsecaseError::Dummy)
+    }
+}
 impl Transaction for AddHourlyEmployeeTransaction<GPayrollDatabase> {
-    fn execute(&self) {
-        // TODO: ここ run_tx 的なやつでラップしたい
-        let _ = AddEmployeeTransaction::exec_tx(self).run(&mut ());
+    type Ctx = ();
+    type Item = u32;
+
+    fn execute(&self) -> Result<Self::Item, UsecaseError> {
+        self.run_tx(|ctx| AddEmployeeTransaction::exec_tx(self).run(ctx))
     }
 }
 
@@ -260,10 +304,24 @@ where
         Box::new(BiweeklySchedule {})
     }
 }
+impl Transactional for AddCommissionedEmployeeTransaction<GPayrollDatabase> {
+    type Ctx = ();
+    type Item = u32;
+
+    fn run_tx(
+        &self,
+        f: impl FnOnce(&mut ()) -> Result<Self::Item, DaoError>,
+    ) -> Result<Self::Item, UsecaseError> {
+        let mut tx = ();
+        f(&mut tx).map_err(UsecaseError::Dummy)
+    }
+}
 impl Transaction for AddCommissionedEmployeeTransaction<GPayrollDatabase> {
-    fn execute(&self) {
-        // TODO: ここ run_tx 的なやつでラップしたい
-        let _ = AddEmployeeTransaction::exec_tx(self).run(&mut ());
+    type Ctx = ();
+    type Item = u32;
+
+    fn execute(&self) -> Result<Self::Item, UsecaseError> {
+        self.run_tx(|ctx| AddEmployeeTransaction::exec_tx(self).run(ctx))
     }
 }
 
@@ -284,14 +342,28 @@ where
         self.db.clone()
     }
 }
+impl Transactional for DeleteEmployeeTransaction<GPayrollDatabase> {
+    type Ctx = ();
+    type Item = ();
+
+    fn run_tx(
+        &self,
+        f: impl FnOnce(&mut ()) -> Result<Self::Item, DaoError>,
+    ) -> Result<Self::Item, UsecaseError> {
+        let mut tx = ();
+        f(&mut tx).map_err(UsecaseError::Dummy)
+    }
+}
 impl Transaction for DeleteEmployeeTransaction<GPayrollDatabase> {
-    fn execute(&self) {
-        // TODO: ここ run_tx 的なやつでラップしたい
-        let _ = tx_rs::with_tx(|_| {
-            self.get_dao().delete_employee(self.id);
-            Ok::<(), DaoError>(())
+    type Ctx = ();
+    type Item = ();
+
+    fn execute(&self) -> Result<Self::Item, UsecaseError> {
+        self.run_tx(|_| {
+            let dao = self.get_dao();
+            dao.delete_employee(self.id);
+            Ok(())
         })
-        .run(&mut ());
     }
 }
 
@@ -300,7 +372,7 @@ fn main() {
         db: Rc::new(RefCell::new(HashMap::new())),
     };
 
-    let tx: Box<dyn Transaction> = Box::new(AddSalariedEmployeeTransaction {
+    let tx: Box<dyn Transaction<Ctx = _, Item = _>> = Box::new(AddSalariedEmployeeTransaction {
         db: db.clone(),
 
         id: 1,
@@ -308,10 +380,10 @@ fn main() {
         address: "Home".to_string(),
         salary: 1000.0,
     });
-    tx.execute();
+    let _ = tx.execute();
     println!("{:#?}", db);
 
-    let tx: Box<dyn Transaction> = Box::new(AddHourlyEmployeeTransaction {
+    let tx: Box<dyn Transaction<Ctx = _, Item = _>> = Box::new(AddHourlyEmployeeTransaction {
         db: db.clone(),
 
         id: 2,
@@ -319,28 +391,29 @@ fn main() {
         address: "Office".to_string(),
         hourly_rate: 10.0,
     });
-    tx.execute();
+    let _ = tx.execute();
     println!("{:#?}", db);
 
-    let tx: Box<dyn Transaction> = Box::new(AddCommissionedEmployeeTransaction {
-        db: db.clone(),
+    let tx: Box<dyn Transaction<Ctx = _, Item = _>> =
+        Box::new(AddCommissionedEmployeeTransaction {
+            db: db.clone(),
 
-        id: 3,
-        name: "Charlie".to_string(),
-        address: "Wall St.".to_string(),
-        salary: 1000.0,
-        commission_rate: 0.1,
-    });
-    tx.execute();
+            id: 3,
+            name: "Charlie".to_string(),
+            address: "Wall St.".to_string(),
+            salary: 1000.0,
+            commission_rate: 0.1,
+        });
+    let _ = tx.execute();
     println!("{:#?}", db);
 
     for i in 1..=3 {
-        let tx: Box<dyn Transaction> = Box::new(DeleteEmployeeTransaction {
+        let tx: Box<dyn Transaction<Ctx = _, Item = _>> = Box::new(DeleteEmployeeTransaction {
             db: db.clone(),
 
             id: i,
         });
-        tx.execute();
+        let _ = tx.execute();
         println!("{:#?}", db);
     }
 }
