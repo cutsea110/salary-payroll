@@ -1,4 +1,5 @@
 use dyn_clone::DynClone;
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use thiserror::Error;
@@ -73,18 +74,16 @@ trait HaveDao {
 }
 trait Transactional {
     type Ctx;
-    type Item;
 
     fn run_tx(
         &self,
-        f: impl FnOnce(&mut Self::Ctx) -> Result<Self::Item, DaoError>,
-    ) -> Result<Self::Item, UsecaseError>;
+        f: impl FnOnce(&mut Self::Ctx) -> Result<(), DaoError>,
+    ) -> Result<(), UsecaseError>;
 }
 trait Transaction {
     type Ctx;
-    type Item;
 
-    fn execute(&self) -> Result<Self::Item, UsecaseError>;
+    fn execute(&self) -> Result<(), UsecaseError>;
 }
 
 trait AddEmployeeTransaction: HaveDao {
@@ -94,7 +93,7 @@ trait AddEmployeeTransaction: HaveDao {
 
     fn get_classification(&self) -> Box<dyn PaymentClassification>;
     fn get_schedule(&self) -> Box<dyn PaymentSchedule>;
-    fn exec_tx<Ctx>(&self) -> impl tx_rs::Tx<Ctx, Item = u32, Err = DaoError> {
+    fn exec_tx<Ctx>(&self) -> impl tx_rs::Tx<Ctx, Item = (), Err = DaoError> {
         let id = self.get_id();
         let name = self.get_name();
         let address = self.get_address();
@@ -113,7 +112,7 @@ trait AddEmployeeTransaction: HaveDao {
         tx_rs::with_tx(move |_| {
             let dao = self.get_dao();
             dao.add_employee(employee);
-            Ok(id)
+            Ok(())
         })
     }
 }
@@ -178,21 +177,16 @@ where
 }
 impl Transactional for AddSalariedEmployeeTransaction<GPayrollDatabase> {
     type Ctx = ();
-    type Item = u32;
 
-    fn run_tx(
-        &self,
-        f: impl FnOnce(&mut ()) -> Result<Self::Item, DaoError>,
-    ) -> Result<Self::Item, UsecaseError> {
+    fn run_tx(&self, f: impl FnOnce(&mut ()) -> Result<(), DaoError>) -> Result<(), UsecaseError> {
         let mut tx = ();
         f(&mut tx).map_err(UsecaseError::Dummy)
     }
 }
 impl Transaction for AddSalariedEmployeeTransaction<GPayrollDatabase> {
     type Ctx = ();
-    type Item = u32;
 
-    fn execute(&self) -> Result<Self::Item, UsecaseError> {
+    fn execute(&self) -> Result<(), UsecaseError> {
         self.run_tx(|ctx| AddEmployeeTransaction::exec_tx(self).run(ctx))
     }
 }
@@ -241,21 +235,16 @@ where
 }
 impl Transactional for AddHourlyEmployeeTransaction<GPayrollDatabase> {
     type Ctx = ();
-    type Item = u32;
 
-    fn run_tx(
-        &self,
-        f: impl FnOnce(&mut ()) -> Result<Self::Item, DaoError>,
-    ) -> Result<Self::Item, UsecaseError> {
+    fn run_tx(&self, f: impl FnOnce(&mut ()) -> Result<(), DaoError>) -> Result<(), UsecaseError> {
         let mut tx = ();
         f(&mut tx).map_err(UsecaseError::Dummy)
     }
 }
 impl Transaction for AddHourlyEmployeeTransaction<GPayrollDatabase> {
     type Ctx = ();
-    type Item = u32;
 
-    fn execute(&self) -> Result<Self::Item, UsecaseError> {
+    fn execute(&self) -> Result<(), UsecaseError> {
         self.run_tx(|ctx| AddEmployeeTransaction::exec_tx(self).run(ctx))
     }
 }
@@ -306,21 +295,16 @@ where
 }
 impl Transactional for AddCommissionedEmployeeTransaction<GPayrollDatabase> {
     type Ctx = ();
-    type Item = u32;
 
-    fn run_tx(
-        &self,
-        f: impl FnOnce(&mut ()) -> Result<Self::Item, DaoError>,
-    ) -> Result<Self::Item, UsecaseError> {
+    fn run_tx(&self, f: impl FnOnce(&mut ()) -> Result<(), DaoError>) -> Result<(), UsecaseError> {
         let mut tx = ();
         f(&mut tx).map_err(UsecaseError::Dummy)
     }
 }
 impl Transaction for AddCommissionedEmployeeTransaction<GPayrollDatabase> {
     type Ctx = ();
-    type Item = u32;
 
-    fn execute(&self) -> Result<Self::Item, UsecaseError> {
+    fn execute(&self) -> Result<(), UsecaseError> {
         self.run_tx(|ctx| AddEmployeeTransaction::exec_tx(self).run(ctx))
     }
 }
@@ -344,21 +328,16 @@ where
 }
 impl Transactional for DeleteEmployeeTransaction<GPayrollDatabase> {
     type Ctx = ();
-    type Item = ();
 
-    fn run_tx(
-        &self,
-        f: impl FnOnce(&mut ()) -> Result<Self::Item, DaoError>,
-    ) -> Result<Self::Item, UsecaseError> {
+    fn run_tx(&self, f: impl FnOnce(&mut ()) -> Result<(), DaoError>) -> Result<(), UsecaseError> {
         let mut tx = ();
         f(&mut tx).map_err(UsecaseError::Dummy)
     }
 }
 impl Transaction for DeleteEmployeeTransaction<GPayrollDatabase> {
     type Ctx = ();
-    type Item = ();
 
-    fn execute(&self) -> Result<Self::Item, UsecaseError> {
+    fn execute(&self) -> Result<(), UsecaseError> {
         self.run_tx(|_| {
             let dao = self.get_dao();
             dao.delete_employee(self.id);
@@ -367,55 +346,75 @@ impl Transaction for DeleteEmployeeTransaction<GPayrollDatabase> {
     }
 }
 
-fn main() {
+trait TransactionSource<Ctx> {
+    fn get_transaction(&mut self) -> Option<Box<dyn Transaction<Ctx = Ctx>>>;
+}
+struct TransactionSourceImpl {
+    db: GPayrollDatabase,
+    data: VecDeque<Box<dyn Transaction<Ctx = ()>>>,
+}
+impl TransactionSourceImpl {
+    fn with_sample(db: GPayrollDatabase) -> Self {
+        let data: Vec<Box<dyn Transaction<Ctx = ()>>> = vec![
+            Box::new(AddSalariedEmployeeTransaction {
+                db: db.clone(),
+                id: 1,
+                name: "Bob".to_string(),
+                address: "Home".to_string(),
+                salary: 1000.0,
+            }),
+            Box::new(AddHourlyEmployeeTransaction {
+                db: db.clone(),
+                id: 2,
+                name: "Alice".to_string(),
+                address: "Home".to_string(),
+                hourly_rate: 10.0,
+            }),
+            Box::new(AddCommissionedEmployeeTransaction {
+                db: db.clone(),
+                id: 3,
+                name: "Charlie".to_string(),
+                address: "Home".to_string(),
+                salary: 1000.0,
+                commission_rate: 0.1,
+            }),
+            Box::new(DeleteEmployeeTransaction {
+                db: db.clone(),
+                id: 1,
+            }),
+            Box::new(DeleteEmployeeTransaction {
+                db: db.clone(),
+                id: 2,
+            }),
+            Box::new(DeleteEmployeeTransaction {
+                db: db.clone(),
+                id: 3,
+            }),
+        ];
+
+        Self {
+            db: db.clone(),
+            data: data.into(),
+        }
+    }
+}
+impl TransactionSource<()> for TransactionSourceImpl {
+    fn get_transaction(&mut self) -> Option<Box<dyn Transaction<Ctx = ()>>> {
+        self.data.pop_front()
+    }
+}
+
+fn main() -> Result<(), UsecaseError> {
     let db = GPayrollDatabase {
         db: Rc::new(RefCell::new(HashMap::new())),
     };
-
-    let tx: Box<dyn Transaction<Ctx = _, Item = _>> = Box::new(AddSalariedEmployeeTransaction {
-        db: db.clone(),
-
-        id: 1,
-        name: "Bob".to_string(),
-        address: "Home".to_string(),
-        salary: 1000.0,
-    });
-    let _ = tx.execute();
-    println!("{:#?}", db);
-
-    let tx: Box<dyn Transaction<Ctx = _, Item = _>> = Box::new(AddHourlyEmployeeTransaction {
-        db: db.clone(),
-
-        id: 2,
-        name: "Alice".to_string(),
-        address: "Office".to_string(),
-        hourly_rate: 10.0,
-    });
-    let _ = tx.execute();
-    println!("{:#?}", db);
-
-    let tx: Box<dyn Transaction<Ctx = _, Item = _>> =
-        Box::new(AddCommissionedEmployeeTransaction {
-            db: db.clone(),
-
-            id: 3,
-            name: "Charlie".to_string(),
-            address: "Wall St.".to_string(),
-            salary: 1000.0,
-            commission_rate: 0.1,
-        });
-    let _ = tx.execute();
-    println!("{:#?}", db);
-
-    for i in 1..=3 {
-        let tx: Box<dyn Transaction<Ctx = _, Item = _>> = Box::new(DeleteEmployeeTransaction {
-            db: db.clone(),
-
-            id: i,
-        });
-        let _ = tx.execute();
+    let mut tx_source = TransactionSourceImpl::with_sample(db.clone());
+    while let Some(tx) = tx_source.get_transaction() {
+        tx.execute()?;
         println!("{:#?}", db);
     }
+
+    Ok(())
 }
 
 /*
