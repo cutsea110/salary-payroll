@@ -1,3 +1,4 @@
+/*
 use dyn_clone::DynClone;
 use std::collections::VecDeque;
 use std::fmt::Debug;
@@ -416,8 +417,8 @@ fn main() -> Result<(), UsecaseError> {
 
     Ok(())
 }
+*/
 
-/*
 use chrono::NaiveDate;
 use core::fmt::Debug;
 use tx_rs::Tx;
@@ -695,7 +696,7 @@ mod classification {
             self
         }
         fn calculate_pay(&self, pc: &PayCheck) -> f32 {
-            let mut total_pay = 0.0;
+            let mut total_pay = self.salary;
             let pay_period = pc.get_pay_period();
             for sr in self.sales_receipts.iter() {
                 if pay_period.contains(&sr.get_date()) {
@@ -3579,4 +3580,3 @@ fn main() {
     let mut app = PayrollApp::new("script/test.scr");
     app.run_on();
 }
-*/
