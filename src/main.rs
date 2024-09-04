@@ -2246,8 +2246,8 @@ impl PayableEmployee for PaydayTransactionImpl {
     }
 }
 
-trait TransactionSource {
-    fn get_transactions(&self) -> Vec<TranSrc>;
+trait TransactionSource<Ctx> {
+    fn get_transactions(&self) -> Vec<Box<dyn Transaction<Ctx>>>;
 }
 trait Transaction<Ctx> {
     fn tx_execute(&mut self);
@@ -2344,244 +2344,134 @@ impl Transaction<()> for PaydayTransactionImpl {
         self.execute().run(&mut ()).expect("payday");
     }
 }
-
-#[derive(Debug, Clone)]
-enum TranSrc {
-    AddSalaryEmp(AddSalariedEmployeeTransactionImpl),
-    AddHourlyEmp(AddHourlyEmployeeTransactionImpl),
-    AddCommissionedEmp(AddCommissionedEmployeeTransactionImpl),
-    DelEmp(DeleteEmployeeTransactionImpl),
-    TimeCard(TimeCardTransactionImpl),
-    SalesReceipt(SalesReceiptTransactionImpl),
-    ServiceCharge(ServiceChargeTransactionImpl),
-    ChangeName(ChangeNameTransactionImpl),
-    ChangeAddress(ChangeAddressTransactionImpl),
-    ChangeSalary(ChangeSalaryTransactionImpl),
-    ChangeHourly(ChangeHourlyTransactionImpl),
-    ChangeCommissioned(ChangeCommissionedTransactionImpl),
-    ChangeHold(ChangeHoldTransactionImpl),
-    ChangeDirect(ChangeDirectTransactionImpl),
-    ChangeMail(ChangeMailTransactionImpl),
-    ChangeUnionMember(ChangeUnionMemberTransactionImpl),
-    ChangeNoMember(ChangeNoMemberTransactionImpl),
-    Payday(PaydayTransactionImpl),
-}
-impl TranSrc {
-    pub fn from_tran_with(command: Command, db: MockDb) -> TranSrc {
-        match command {
-            Command::AddSalaryEmp {
-                emp_id,
-                name,
-                address,
-                salary,
-            } => TranSrc::AddSalaryEmp(AddSalariedEmployeeTransactionImpl {
-                db,
-                emp_id,
-                name,
-                address,
-                salary,
-            }),
-            Command::AddHourlyEmp {
-                emp_id,
-                name,
-                address,
-                hourly_rate,
-            } => TranSrc::AddHourlyEmp(AddHourlyEmployeeTransactionImpl {
-                db,
-                emp_id,
-                name,
-                address,
-                hourly_rate,
-            }),
-            Command::AddCommissionedEmp {
-                emp_id,
-                name,
-                address,
-                salary,
-                commission_rate,
-            } => TranSrc::AddCommissionedEmp(AddCommissionedEmployeeTransactionImpl {
-                db,
-                emp_id,
-                name,
-                address,
-                salary,
-                commission_rate,
-            }),
-            Command::DelEmp { emp_id } => {
-                TranSrc::DelEmp(DeleteEmployeeTransactionImpl { db, emp_id })
-            }
-            Command::TimeCard {
-                emp_id,
-                date,
-                hours,
-            } => TranSrc::TimeCard(TimeCardTransactionImpl {
-                db,
-                emp_id,
-                date,
-                hours,
-            }),
-            Command::SalesReceipt {
-                emp_id,
-                date,
-                amount,
-            } => TranSrc::SalesReceipt(SalesReceiptTransactionImpl {
-                db,
-                emp_id,
-                date,
-                amount,
-            }),
-            Command::ServiceCharge {
-                member_id,
-                date,
-                amount,
-            } => TranSrc::ServiceCharge(ServiceChargeTransactionImpl {
-                db,
-                member_id,
-                date,
-                amount,
-            }),
-            Command::ChgName { emp_id, name } => {
-                TranSrc::ChangeName(ChangeNameTransactionImpl { db, emp_id, name })
-            }
-            Command::ChgAddress { emp_id, address } => {
-                TranSrc::ChangeAddress(ChangeAddressTransactionImpl {
-                    db,
-                    emp_id,
-                    address,
-                })
-            }
-            Command::ChgSalaried { emp_id, salary } => {
-                TranSrc::ChangeSalary(ChangeSalaryTransactionImpl { db, emp_id, salary })
-            }
-            Command::ChgHourly {
-                emp_id,
-                hourly_rate,
-            } => TranSrc::ChangeHourly(ChangeHourlyTransactionImpl {
-                db,
-                emp_id,
-                hourly_rate,
-            }),
-            Command::ChgCommissioned {
-                emp_id,
-                salary,
-                commission_rate,
-            } => TranSrc::ChangeCommissioned(ChangeCommissionedTransactionImpl {
-                db,
-                emp_id,
-                salary,
-                commission_rate,
-            }),
-            Command::ChgHold { emp_id } => {
-                TranSrc::ChangeHold(ChangeHoldTransactionImpl { db, emp_id })
-            }
-            Command::ChgDirect {
-                emp_id,
-                bank,
-                account,
-            } => TranSrc::ChangeDirect(ChangeDirectTransactionImpl {
-                db,
-                emp_id,
-                bank,
-                account,
-            }),
-            Command::ChgMail { emp_id, address } => {
-                TranSrc::ChangeMail(ChangeMailTransactionImpl {
-                    db,
-                    emp_id,
-                    address,
-                })
-            }
-            Command::ChgMember {
-                emp_id,
-                member_id,
-                dues,
-            } => TranSrc::ChangeUnionMember(ChangeUnionMemberTransactionImpl {
-                db,
-                emp_id,
-                member_id,
-                dues,
-            }),
-            Command::ChgNoMember { emp_id } => {
-                TranSrc::ChangeNoMember(ChangeNoMemberTransactionImpl { db, emp_id })
-            }
-            Command::Payday { pay_date } => TranSrc::Payday(PaydayTransactionImpl { db, pay_date }),
+fn from_command(command: Command, db: MockDb) -> Box<dyn Transaction<()>> {
+    match command {
+        Command::AddSalaryEmp {
+            emp_id,
+            name,
+            address,
+            salary,
+        } => Box::new(AddSalariedEmployeeTransactionImpl {
+            db,
+            emp_id,
+            name,
+            address,
+            salary,
+        }),
+        Command::AddHourlyEmp {
+            emp_id,
+            name,
+            address,
+            hourly_rate,
+        } => Box::new(AddHourlyEmployeeTransactionImpl {
+            db,
+            emp_id,
+            name,
+            address,
+            hourly_rate,
+        }),
+        Command::AddCommissionedEmp {
+            emp_id,
+            name,
+            address,
+            salary,
+            commission_rate,
+        } => Box::new(AddCommissionedEmployeeTransactionImpl {
+            db,
+            emp_id,
+            name,
+            address,
+            salary,
+            commission_rate,
+        }),
+        Command::DelEmp { emp_id } => Box::new(DeleteEmployeeTransactionImpl { db, emp_id }),
+        Command::TimeCard {
+            emp_id,
+            date,
+            hours,
+        } => Box::new(TimeCardTransactionImpl {
+            db,
+            emp_id,
+            date,
+            hours,
+        }),
+        Command::SalesReceipt {
+            emp_id,
+            date,
+            amount,
+        } => Box::new(SalesReceiptTransactionImpl {
+            db,
+            emp_id,
+            date,
+            amount,
+        }),
+        Command::ServiceCharge {
+            member_id,
+            date,
+            amount,
+        } => Box::new(ServiceChargeTransactionImpl {
+            db,
+            member_id,
+            date,
+            amount,
+        }),
+        Command::ChgName { emp_id, name } => {
+            Box::new(ChangeNameTransactionImpl { db, emp_id, name })
         }
-    }
-    pub fn execute(&mut self) {
-        match self {
-            TranSrc::AddSalaryEmp(t) => {
-                println!(">>> Add Salary Employee <<<");
-                t.execute().run(&mut ()).expect("add salary employee");
-            }
-            TranSrc::AddHourlyEmp(t) => {
-                println!(">>> Add Hourly Employee <<<");
-                t.execute().run(&mut ()).expect("add hourly employee");
-            }
-            TranSrc::AddCommissionedEmp(t) => {
-                println!(">>> Add Commissioned Employee <<<");
-                t.execute().run(&mut ()).expect("add commissioned employee");
-            }
-            TranSrc::DelEmp(t) => {
-                println!(">>> Delete Employee <<<");
-                t.execute().run(&mut ()).expect("delete employee");
-            }
-            TranSrc::TimeCard(t) => {
-                println!(">>> TimeCard <<<");
-                t.execute().run(&mut ()).expect("add time card");
-            }
-            TranSrc::SalesReceipt(t) => {
-                println!(">>> SalesReceipt <<<");
-                t.execute().run(&mut ()).expect("add sales receipt");
-            }
-            TranSrc::ServiceCharge(t) => {
-                println!(">>> ServiceCharge <<<");
-                t.execute().run(&mut ()).expect("add service charge");
-            }
-            TranSrc::ChangeName(t) => {
-                println!(">>> Change Employee Name <<<");
-                t.execute().run(&mut ()).expect("change name");
-            }
-            TranSrc::ChangeAddress(t) => {
-                println!(">>> Change Employee Address <<<");
-                t.execute().run(&mut ()).expect("change address");
-            }
-            TranSrc::ChangeSalary(t) => {
-                println!(">>> Change Salary <<<");
-                t.execute().run(&mut ()).expect("change salary");
-            }
-            TranSrc::ChangeHourly(t) => {
-                println!(">>> Change Hourly <<<");
-                t.execute().run(&mut ()).expect("change hourly");
-            }
-            TranSrc::ChangeCommissioned(t) => {
-                println!(">>> Change Commissioned <<<");
-                t.execute().run(&mut ()).expect("change commissioned");
-            }
-            TranSrc::ChangeHold(t) => {
-                println!(">>> Change Hold <<<");
-                t.execute().run(&mut ()).expect("change hold");
-            }
-            TranSrc::ChangeDirect(t) => {
-                println!(">>> Change Direct <<<");
-                t.execute().run(&mut ()).expect("change direct");
-            }
-            TranSrc::ChangeMail(t) => {
-                println!(">>> Change Mail <<<");
-                t.execute().run(&mut ()).expect("change mail");
-            }
-            TranSrc::ChangeUnionMember(t) => {
-                println!(">>> Union Member <<<");
-                t.execute().run(&mut ()).expect("change member");
-            }
-            TranSrc::ChangeNoMember(t) => {
-                println!(">>> No Member <<<");
-                t.execute().run(&mut ()).expect("change no member");
-            }
-            TranSrc::Payday(ref mut t) => {
-                println!(">>> Payday <<<");
-                t.execute().run(&mut ()).expect("payday");
-            }
+        Command::ChgAddress { emp_id, address } => Box::new(ChangeAddressTransactionImpl {
+            db,
+            emp_id,
+            address,
+        }),
+        Command::ChgSalaried { emp_id, salary } => {
+            Box::new(ChangeSalaryTransactionImpl { db, emp_id, salary })
         }
+        Command::ChgHourly {
+            emp_id,
+            hourly_rate,
+        } => Box::new(ChangeHourlyTransactionImpl {
+            db,
+            emp_id,
+            hourly_rate,
+        }),
+        Command::ChgCommissioned {
+            emp_id,
+            salary,
+            commission_rate,
+        } => Box::new(ChangeCommissionedTransactionImpl {
+            db,
+            emp_id,
+            salary,
+            commission_rate,
+        }),
+        Command::ChgHold { emp_id } => Box::new(ChangeHoldTransactionImpl { db, emp_id }),
+        Command::ChgDirect {
+            emp_id,
+            bank,
+            account,
+        } => Box::new(ChangeDirectTransactionImpl {
+            db,
+            emp_id,
+            bank,
+            account,
+        }),
+        Command::ChgMail { emp_id, address } => Box::new(ChangeMailTransactionImpl {
+            db,
+            emp_id,
+            address,
+        }),
+        Command::ChgMember {
+            emp_id,
+            member_id,
+            dues,
+        } => Box::new(ChangeUnionMemberTransactionImpl {
+            db,
+            emp_id,
+            member_id,
+            dues,
+        }),
+        Command::ChgNoMember { emp_id } => Box::new(ChangeNoMemberTransactionImpl { db, emp_id }),
+        Command::Payday { pay_date } => Box::new(PaydayTransactionImpl { db, pay_date }),
     }
 }
 
@@ -3650,15 +3540,15 @@ struct PayrollApp {
     db: MockDb,
     input: String,
 }
-impl TransactionSource for PayrollApp {
-    fn get_transactions(&self) -> Vec<TranSrc> {
+impl TransactionSource<()> for PayrollApp {
+    fn get_transactions(&self) -> Vec<Box<dyn Transaction<()>>> {
         use parsec_rs::Parser;
 
         transactions()
             .parse(&self.input)
             .map(|(ts, _)| {
                 ts.into_iter()
-                    .map(|t| TranSrc::from_tran_with(t, self.db.clone()))
+                    .map(|t| from_command(t, self.db.clone()))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default()
@@ -3675,7 +3565,7 @@ impl PayrollApp {
     }
     pub fn run(&mut self) {
         for mut tran in self.get_transactions() {
-            tran.execute();
+            tran.tx_execute();
             println!("{:#?}", self.db);
         }
     }
