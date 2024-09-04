@@ -2249,6 +2249,101 @@ impl PayableEmployee for PaydayTransactionImpl {
 trait TransactionSource {
     fn get_transactions(&self) -> Vec<TranSrc>;
 }
+trait Transaction<Ctx> {
+    fn tx_execute(&mut self);
+}
+impl Transaction<()> for AddSalariedEmployeeTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("add salaried employee");
+    }
+}
+impl Transaction<()> for AddHourlyEmployeeTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("add hourly employee");
+    }
+}
+impl Transaction<()> for AddCommissionedEmployeeTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute()
+            .run(&mut ())
+            .expect("add commissioned employee");
+    }
+}
+impl Transaction<()> for DeleteEmployeeTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("delete employee");
+    }
+}
+impl Transaction<()> for TimeCardTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("time card");
+    }
+}
+impl Transaction<()> for SalesReceiptTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("sales receipt");
+    }
+}
+impl Transaction<()> for ServiceChargeTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("service charge");
+    }
+}
+impl Transaction<()> for ChangeNameTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change name");
+    }
+}
+impl Transaction<()> for ChangeAddressTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change address");
+    }
+}
+impl Transaction<()> for ChangeSalaryTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change salary");
+    }
+}
+impl Transaction<()> for ChangeHourlyTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change hourly");
+    }
+}
+impl Transaction<()> for ChangeCommissionedTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change commissioned");
+    }
+}
+impl Transaction<()> for ChangeHoldTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change hold");
+    }
+}
+impl Transaction<()> for ChangeDirectTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change direct");
+    }
+}
+impl Transaction<()> for ChangeMailTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change mail");
+    }
+}
+impl Transaction<()> for ChangeUnionMemberTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change union member");
+    }
+}
+impl Transaction<()> for ChangeNoMemberTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change no member");
+    }
+}
+impl Transaction<()> for PaydayTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("payday");
+    }
+}
 
 #[derive(Debug, Clone)]
 enum TranSrc {
