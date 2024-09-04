@@ -2246,6 +2246,10 @@ impl PayableEmployee for PaydayTransactionImpl {
     }
 }
 
+trait TransactionSource {
+    fn get_transactions(&self) -> Vec<TranSrc>;
+}
+
 #[derive(Debug, Clone)]
 enum TranSrc {
     AddSalaryEmp(AddSalariedEmployeeTransactionImpl),
@@ -3475,6 +3479,20 @@ struct PayrollApp {
     db: MockDb,
     input: String,
 }
+impl TransactionSource for PayrollApp {
+    fn get_transactions(&self) -> Vec<TranSrc> {
+        use parsec_rs::Parser;
+
+        transactions()
+            .parse(&self.input)
+            .map(|(ts, _)| {
+                ts.into_iter()
+                    .map(|t| TranSrc::from_tran_with(t, self.db.clone()))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    }
+}
 impl PayrollApp {
     pub fn new(file_name: &str) -> Self {
         let input = std::fs::read_to_string(file_name).expect("read file");
@@ -3484,18 +3502,8 @@ impl PayrollApp {
             input,
         }
     }
-    pub fn run_on(&mut self) {
-        use parsec_rs::Parser;
-
-        for tran in transactions()
-            .parse(&mut self.input)
-            .map(|(ts, _)| {
-                ts.into_iter()
-                    .map(|t| TranSrc::from_tran_with(t, self.db.clone()))
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default()
-        {
+    pub fn run(&mut self) {
+        for tran in self.get_transactions() {
             match tran {
                 TranSrc::AddSalaryEmp(t) => {
                     println!(">>> Add Salary Employee <<<");
@@ -3577,6 +3585,5 @@ impl PayrollApp {
 }
 
 fn main() {
-    let mut app = PayrollApp::new("script/test.scr");
-    app.run_on();
+    PayrollApp::new("script/test.scr").run();
 }
