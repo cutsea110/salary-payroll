@@ -2412,6 +2412,82 @@ impl TranSrc {
             Command::Payday { pay_date } => TranSrc::Payday(PaydayTransactionImpl { db, pay_date }),
         }
     }
+    pub fn execute(&mut self) {
+        match self {
+            TranSrc::AddSalaryEmp(t) => {
+                println!(">>> Add Salary Employee <<<");
+                t.execute().run(&mut ()).expect("add salary employee");
+            }
+            TranSrc::AddHourlyEmp(t) => {
+                println!(">>> Add Hourly Employee <<<");
+                t.execute().run(&mut ()).expect("add hourly employee");
+            }
+            TranSrc::AddCommissionedEmp(t) => {
+                println!(">>> Add Commissioned Employee <<<");
+                t.execute().run(&mut ()).expect("add commissioned employee");
+            }
+            TranSrc::DelEmp(t) => {
+                println!(">>> Delete Employee <<<");
+                t.execute().run(&mut ()).expect("delete employee");
+            }
+            TranSrc::TimeCard(t) => {
+                println!(">>> TimeCard <<<");
+                t.execute().run(&mut ()).expect("add time card");
+            }
+            TranSrc::SalesReceipt(t) => {
+                println!(">>> SalesReceipt <<<");
+                t.execute().run(&mut ()).expect("add sales receipt");
+            }
+            TranSrc::ServiceCharge(t) => {
+                println!(">>> ServiceCharge <<<");
+                t.execute().run(&mut ()).expect("add service charge");
+            }
+            TranSrc::ChangeName(t) => {
+                println!(">>> Change Employee Name <<<");
+                t.execute().run(&mut ()).expect("change name");
+            }
+            TranSrc::ChangeAddress(t) => {
+                println!(">>> Change Employee Address <<<");
+                t.execute().run(&mut ()).expect("change address");
+            }
+            TranSrc::ChangeSalary(t) => {
+                println!(">>> Change Salary <<<");
+                t.execute().run(&mut ()).expect("change salary");
+            }
+            TranSrc::ChangeHourly(t) => {
+                println!(">>> Change Hourly <<<");
+                t.execute().run(&mut ()).expect("change hourly");
+            }
+            TranSrc::ChangeCommissioned(t) => {
+                println!(">>> Change Commissioned <<<");
+                t.execute().run(&mut ()).expect("change commissioned");
+            }
+            TranSrc::ChangeHold(t) => {
+                println!(">>> Change Hold <<<");
+                t.execute().run(&mut ()).expect("change hold");
+            }
+            TranSrc::ChangeDirect(t) => {
+                println!(">>> Change Direct <<<");
+                t.execute().run(&mut ()).expect("change direct");
+            }
+            TranSrc::ChangeMail(t) => {
+                println!(">>> Change Mail <<<");
+                t.execute().run(&mut ()).expect("change mail");
+            }
+            TranSrc::ChangeUnionMember(t) => {
+                println!(">>> Union Member <<<");
+                t.execute().run(&mut ()).expect("change member");
+            }
+            TranSrc::ChangeNoMember(t) => {
+                println!(">>> No Member <<<");
+                t.execute().run(&mut ()).expect("change no member");
+            }
+            TranSrc::Payday(ref mut t) => {
+                println!(">>> Payday <<<");
+                t.execute().run(&mut ()).expect("payday");
+            }
+        }
+    }
 }
 
 // Parser
@@ -3503,82 +3579,8 @@ impl PayrollApp {
         }
     }
     pub fn run(&mut self) {
-        for tran in self.get_transactions() {
-            match tran {
-                TranSrc::AddSalaryEmp(t) => {
-                    println!(">>> Add Salary Employee <<<");
-                    t.execute().run(&mut ()).expect("add salary employee");
-                }
-                TranSrc::AddHourlyEmp(t) => {
-                    println!(">>> Add Hourly Employee <<<");
-                    t.execute().run(&mut ()).expect("add hourly employee");
-                }
-                TranSrc::AddCommissionedEmp(t) => {
-                    println!(">>> Add Commissioned Employee <<<");
-                    t.execute().run(&mut ()).expect("add commissioned employee");
-                    println!("{:#?}", self.db);
-                }
-                TranSrc::DelEmp(t) => {
-                    println!(">>> Delete Employee <<<");
-                    t.execute().run(&mut ()).expect("delete employee");
-                }
-                TranSrc::TimeCard(t) => {
-                    println!(">>> TimeCard <<<");
-                    t.execute().run(&mut ()).expect("add time card");
-                }
-                TranSrc::SalesReceipt(t) => {
-                    println!(">>> SalesReceipt <<<");
-                    t.execute().run(&mut ()).expect("add sales receipt");
-                }
-                TranSrc::ServiceCharge(t) => {
-                    println!(">>> ServiceCharge <<<");
-                    t.execute().run(&mut ()).expect("add service charge");
-                }
-                TranSrc::ChangeName(t) => {
-                    println!(">>> Change Employee Name <<<");
-                    t.execute().run(&mut ()).expect("change name");
-                }
-                TranSrc::ChangeAddress(t) => {
-                    println!(">>> Change Employee Address <<<");
-                    t.execute().run(&mut ()).expect("change address");
-                }
-                TranSrc::ChangeSalary(t) => {
-                    println!(">>> Change Salary <<<");
-                    t.execute().run(&mut ()).expect("change salary");
-                }
-                TranSrc::ChangeHourly(t) => {
-                    println!(">>> Change Hourly <<<");
-                    t.execute().run(&mut ()).expect("change hourly");
-                }
-                TranSrc::ChangeCommissioned(t) => {
-                    println!(">>> Change Commissioned <<<");
-                    t.execute().run(&mut ()).expect("change commissioned");
-                }
-                TranSrc::ChangeHold(t) => {
-                    println!(">>> Change Hold <<<");
-                    t.execute().run(&mut ()).expect("change hold");
-                }
-                TranSrc::ChangeDirect(t) => {
-                    println!(">>> Change Direct <<<");
-                    t.execute().run(&mut ()).expect("change direct");
-                }
-                TranSrc::ChangeMail(t) => {
-                    println!(">>> Change Mail <<<");
-                    t.execute().run(&mut ()).expect("change mail");
-                }
-                TranSrc::ChangeUnionMember(t) => {
-                    println!(">>> Union Member <<<");
-                    t.execute().run(&mut ()).expect("change member");
-                }
-                TranSrc::ChangeNoMember(t) => {
-                    println!(">>> No Member <<<");
-                    t.execute().run(&mut ()).expect("change no member");
-                }
-                TranSrc::Payday(mut t) => {
-                    println!(">>> Payday <<<");
-                    t.execute().run(&mut ()).expect("payday");
-                }
-            }
+        for mut tran in self.get_transactions() {
+            tran.execute();
             println!("{:#?}", self.db);
         }
     }
