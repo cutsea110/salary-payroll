@@ -1,424 +1,3 @@
-/*
-use dyn_clone::DynClone;
-use std::collections::VecDeque;
-use std::fmt::Debug;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
-use thiserror::Error;
-use tx_rs::Tx;
-
-#[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum DaoError {
-    #[error("dummy")]
-    Dummy,
-}
-#[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum UsecaseError {
-    #[error("dummy: {0}")]
-    Dummy(DaoError),
-}
-
-trait PaymentClassification: DynClone + Debug {}
-dyn_clone::clone_trait_object!(PaymentClassification);
-#[derive(Debug, Clone)]
-struct SalariedClassification {
-    salary: f32,
-}
-impl PaymentClassification for SalariedClassification {}
-#[derive(Debug, Clone)]
-struct HourlyClassification {
-    hourly_rate: f32,
-}
-impl PaymentClassification for HourlyClassification {}
-#[derive(Debug, Clone)]
-struct CommissionedClassification {
-    salary: f32,
-    commission_rate: f32,
-}
-impl PaymentClassification for CommissionedClassification {}
-
-trait PaymentSchedule: DynClone + Debug {}
-dyn_clone::clone_trait_object!(PaymentSchedule);
-#[derive(Debug, Clone)]
-struct MonthlySchedule {}
-impl PaymentSchedule for MonthlySchedule {}
-#[derive(Debug, Clone)]
-struct WeeklySchedule {}
-impl PaymentSchedule for WeeklySchedule {}
-#[derive(Debug, Clone)]
-struct BiweeklySchedule {}
-impl PaymentSchedule for BiweeklySchedule {}
-
-trait PaymentMethod: DynClone + Debug {}
-dyn_clone::clone_trait_object!(PaymentMethod);
-#[derive(Debug, Clone)]
-struct HoldMethod {}
-impl PaymentMethod for HoldMethod {}
-
-#[derive(Debug, Clone)]
-struct Employee {
-    id: u32,
-    name: String,
-    address: String,
-
-    classification: Box<dyn PaymentClassification>,
-    schedule: Box<dyn PaymentSchedule>,
-    method: Box<dyn PaymentMethod>,
-}
-
-trait Dao {
-    fn add_employee(&self, employee: Employee);
-    fn get_employee(&self, id: u32) -> Option<Employee>;
-    fn delete_employee(&self, id: u32);
-}
-trait HaveDao {
-    fn get_dao(&self) -> impl Dao;
-}
-trait Transactional {
-    type Ctx;
-
-    fn run_tx(
-        &self,
-        f: impl FnOnce(&mut Self::Ctx) -> Result<(), DaoError>,
-    ) -> Result<(), UsecaseError>;
-}
-trait Transaction {
-    type Ctx;
-
-    fn execute(&self) -> Result<(), UsecaseError>;
-}
-
-trait AddEmployeeTransaction: HaveDao {
-    fn get_id(&self) -> u32;
-    fn get_name(&self) -> &str;
-    fn get_address(&self) -> &str;
-
-    fn get_classification(&self) -> Box<dyn PaymentClassification>;
-    fn get_schedule(&self) -> Box<dyn PaymentSchedule>;
-    fn exec_tx<Ctx>(&self) -> impl tx_rs::Tx<Ctx, Item = (), Err = DaoError> {
-        let id = self.get_id();
-        let name = self.get_name();
-        let address = self.get_address();
-
-        let pc = self.get_classification();
-        let ps = self.get_schedule();
-        let employee = Employee {
-            id,
-            name: name.to_string(),
-            address: address.to_string(),
-
-            classification: pc,
-            schedule: ps,
-            method: Box::new(HoldMethod {}),
-        };
-        tx_rs::with_tx(move |_| {
-            let dao = self.get_dao();
-            dao.add_employee(employee);
-            Ok(())
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
-struct GPayrollDatabase {
-    db: Rc<RefCell<HashMap<u32, Employee>>>,
-}
-impl Dao for GPayrollDatabase {
-    fn add_employee(&self, employee: Employee) {
-        self.db.borrow_mut().insert(employee.id, employee);
-    }
-    fn get_employee(&self, id: u32) -> Option<Employee> {
-        self.db.borrow().get(&id).cloned()
-    }
-    fn delete_employee(&self, id: u32) {
-        self.db.borrow_mut().remove(&id);
-    }
-}
-
-#[derive(Debug, Clone)]
-struct AddSalariedEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
-    db: DB,
-
-    id: u32,
-    name: String,
-    address: String,
-    salary: f32,
-}
-impl<DB> HaveDao for AddSalariedEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
-    fn get_dao(&self) -> impl Dao {
-        self.db.clone()
-    }
-}
-impl<DB> AddEmployeeTransaction for AddSalariedEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
-    fn get_id(&self) -> u32 {
-        self.id
-    }
-    fn get_name(&self) -> &str {
-        &self.name
-    }
-    fn get_address(&self) -> &str {
-        &self.address
-    }
-    fn get_classification(&self) -> Box<dyn PaymentClassification> {
-        Box::new(SalariedClassification {
-            salary: self.salary,
-        })
-    }
-    fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
-        Box::new(MonthlySchedule {})
-    }
-}
-impl Transactional for AddSalariedEmployeeTransaction<GPayrollDatabase> {
-    type Ctx = ();
-
-    fn run_tx(&self, f: impl FnOnce(&mut ()) -> Result<(), DaoError>) -> Result<(), UsecaseError> {
-        let mut tx = ();
-        f(&mut tx).map_err(UsecaseError::Dummy)
-    }
-}
-impl Transaction for AddSalariedEmployeeTransaction<GPayrollDatabase> {
-    type Ctx = ();
-
-    fn execute(&self) -> Result<(), UsecaseError> {
-        self.run_tx(|ctx| AddEmployeeTransaction::exec_tx(self).run(ctx))
-    }
-}
-
-#[derive(Debug, Clone)]
-struct AddHourlyEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
-    db: DB,
-
-    id: u32,
-    name: String,
-    address: String,
-    hourly_rate: f32,
-}
-impl<DB> HaveDao for AddHourlyEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
-    fn get_dao(&self) -> impl Dao {
-        self.db.clone()
-    }
-}
-impl<DB> AddEmployeeTransaction for AddHourlyEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
-    fn get_id(&self) -> u32 {
-        self.id
-    }
-    fn get_name(&self) -> &str {
-        &self.name
-    }
-    fn get_address(&self) -> &str {
-        &self.address
-    }
-    fn get_classification(&self) -> Box<dyn PaymentClassification> {
-        Box::new(HourlyClassification {
-            hourly_rate: self.hourly_rate,
-        })
-    }
-    fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
-        Box::new(WeeklySchedule {})
-    }
-}
-impl Transactional for AddHourlyEmployeeTransaction<GPayrollDatabase> {
-    type Ctx = ();
-
-    fn run_tx(&self, f: impl FnOnce(&mut ()) -> Result<(), DaoError>) -> Result<(), UsecaseError> {
-        let mut tx = ();
-        f(&mut tx).map_err(UsecaseError::Dummy)
-    }
-}
-impl Transaction for AddHourlyEmployeeTransaction<GPayrollDatabase> {
-    type Ctx = ();
-
-    fn execute(&self) -> Result<(), UsecaseError> {
-        self.run_tx(|ctx| AddEmployeeTransaction::exec_tx(self).run(ctx))
-    }
-}
-
-#[derive(Debug, Clone)]
-struct AddCommissionedEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
-    db: DB,
-
-    id: u32,
-    name: String,
-    address: String,
-    salary: f32,
-    commission_rate: f32,
-}
-impl<DB> HaveDao for AddCommissionedEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
-    fn get_dao(&self) -> impl Dao {
-        self.db.clone()
-    }
-}
-impl<DB> AddEmployeeTransaction for AddCommissionedEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
-    fn get_id(&self) -> u32 {
-        self.id
-    }
-    fn get_name(&self) -> &str {
-        &self.name
-    }
-    fn get_address(&self) -> &str {
-        &self.address
-    }
-    fn get_classification(&self) -> Box<dyn PaymentClassification> {
-        Box::new(CommissionedClassification {
-            salary: self.salary,
-            commission_rate: self.commission_rate,
-        })
-    }
-    fn get_schedule(&self) -> Box<dyn PaymentSchedule> {
-        Box::new(BiweeklySchedule {})
-    }
-}
-impl Transactional for AddCommissionedEmployeeTransaction<GPayrollDatabase> {
-    type Ctx = ();
-
-    fn run_tx(&self, f: impl FnOnce(&mut ()) -> Result<(), DaoError>) -> Result<(), UsecaseError> {
-        let mut tx = ();
-        f(&mut tx).map_err(UsecaseError::Dummy)
-    }
-}
-impl Transaction for AddCommissionedEmployeeTransaction<GPayrollDatabase> {
-    type Ctx = ();
-
-    fn execute(&self) -> Result<(), UsecaseError> {
-        self.run_tx(|ctx| AddEmployeeTransaction::exec_tx(self).run(ctx))
-    }
-}
-
-#[derive(Debug, Clone)]
-struct DeleteEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
-    db: DB,
-
-    id: u32,
-}
-impl<DB> HaveDao for DeleteEmployeeTransaction<DB>
-where
-    DB: Dao + Clone,
-{
-    fn get_dao(&self) -> impl Dao {
-        self.db.clone()
-    }
-}
-impl Transactional for DeleteEmployeeTransaction<GPayrollDatabase> {
-    type Ctx = ();
-
-    fn run_tx(&self, f: impl FnOnce(&mut ()) -> Result<(), DaoError>) -> Result<(), UsecaseError> {
-        let mut tx = ();
-        f(&mut tx).map_err(UsecaseError::Dummy)
-    }
-}
-impl Transaction for DeleteEmployeeTransaction<GPayrollDatabase> {
-    type Ctx = ();
-
-    fn execute(&self) -> Result<(), UsecaseError> {
-        self.run_tx(|_| {
-            let dao = self.get_dao();
-            dao.delete_employee(self.id);
-            Ok(())
-        })
-    }
-}
-
-trait TransactionSource<Ctx> {
-    fn get_transaction(&mut self) -> Option<Box<dyn Transaction<Ctx = Ctx>>>;
-}
-struct TransactionSourceImpl {
-    db: GPayrollDatabase,
-    data: VecDeque<Box<dyn Transaction<Ctx = ()>>>,
-}
-impl TransactionSourceImpl {
-    fn with_sample(db: GPayrollDatabase) -> Self {
-        let data: Vec<Box<dyn Transaction<Ctx = ()>>> = vec![
-            Box::new(AddSalariedEmployeeTransaction {
-                db: db.clone(),
-                id: 1,
-                name: "Bob".to_string(),
-                address: "Home".to_string(),
-                salary: 1000.0,
-            }),
-            Box::new(AddHourlyEmployeeTransaction {
-                db: db.clone(),
-                id: 2,
-                name: "Alice".to_string(),
-                address: "Home".to_string(),
-                hourly_rate: 10.0,
-            }),
-            Box::new(AddCommissionedEmployeeTransaction {
-                db: db.clone(),
-                id: 3,
-                name: "Charlie".to_string(),
-                address: "Home".to_string(),
-                salary: 1000.0,
-                commission_rate: 0.1,
-            }),
-            Box::new(DeleteEmployeeTransaction {
-                db: db.clone(),
-                id: 1,
-            }),
-            Box::new(DeleteEmployeeTransaction {
-                db: db.clone(),
-                id: 2,
-            }),
-            Box::new(DeleteEmployeeTransaction {
-                db: db.clone(),
-                id: 3,
-            }),
-        ];
-
-        Self {
-            db: db.clone(),
-            data: data.into(),
-        }
-    }
-}
-impl TransactionSource<()> for TransactionSourceImpl {
-    fn get_transaction(&mut self) -> Option<Box<dyn Transaction<Ctx = ()>>> {
-        self.data.pop_front()
-    }
-}
-
-fn main() -> Result<(), UsecaseError> {
-    let db = GPayrollDatabase {
-        db: Rc::new(RefCell::new(HashMap::new())),
-    };
-    let mut tx_source = TransactionSourceImpl::with_sample(db.clone());
-    while let Some(tx) = tx_source.get_transaction() {
-        tx.execute()?;
-        println!("{:#?}", db);
-    }
-
-    Ok(())
-}
-*/
-
 use chrono::NaiveDate;
 use core::fmt::Debug;
 use tx_rs::Tx;
@@ -1860,6 +1439,11 @@ impl SalaryEmployee for AddSalariedEmployeeTransactionImpl {
         self.salary
     }
 }
+impl Transaction<()> for AddSalariedEmployeeTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("add salaried employee");
+    }
+}
 
 #[derive(Debug, Clone)]
 struct AddHourlyEmployeeTransactionImpl {
@@ -1887,6 +1471,11 @@ impl HourlyEmployee for AddHourlyEmployeeTransactionImpl {
     }
     fn get_hourly_rate(&self) -> f32 {
         self.hourly_rate
+    }
+}
+impl Transaction<()> for AddHourlyEmployeeTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("add hourly employee");
     }
 }
 
@@ -1922,6 +1511,13 @@ impl CommissionedEmployee for AddCommissionedEmployeeTransactionImpl {
         self.commission_rate
     }
 }
+impl Transaction<()> for AddCommissionedEmployeeTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute()
+            .run(&mut ())
+            .expect("add commissioned employee");
+    }
+}
 
 #[derive(Debug, Clone)]
 struct DeleteEmployeeTransactionImpl {
@@ -1937,6 +1533,11 @@ impl HaveEmployeeDao<()> for DeleteEmployeeTransactionImpl {
 impl DeletableEmployee for DeleteEmployeeTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
+    }
+}
+impl Transaction<()> for DeleteEmployeeTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("delete employee");
     }
 }
 
@@ -1964,6 +1565,11 @@ impl TimeCardEmployee for TimeCardTransactionImpl {
         self.hours
     }
 }
+impl Transaction<()> for TimeCardTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("time card");
+    }
+}
 
 #[derive(Debug, Clone)]
 struct SalesReceiptTransactionImpl {
@@ -1987,6 +1593,11 @@ impl SalesReceiptEmployee for SalesReceiptTransactionImpl {
     }
     fn get_amount(&self) -> f32 {
         self.amount
+    }
+}
+impl Transaction<()> for SalesReceiptTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("sales receipt");
     }
 }
 
@@ -2014,6 +1625,11 @@ impl ServiceChargeableMember for ServiceChargeTransactionImpl {
         self.amount
     }
 }
+impl Transaction<()> for ServiceChargeTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("service charge");
+    }
+}
 
 #[derive(Debug, Clone)]
 struct ChangeNameTransactionImpl {
@@ -2033,6 +1649,11 @@ impl NameChangeableEmployee for ChangeNameTransactionImpl {
     }
     fn get_name(&self) -> &str {
         &self.name
+    }
+}
+impl Transaction<()> for ChangeNameTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change name");
     }
 }
 
@@ -2056,6 +1677,11 @@ impl AddressChangeableEmployee for ChangeAddressTransactionImpl {
         &self.address
     }
 }
+impl Transaction<()> for ChangeAddressTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change address");
+    }
+}
 
 #[derive(Debug, Clone)]
 struct ChangeSalaryTransactionImpl {
@@ -2077,6 +1703,11 @@ impl SalaryChangeableEmployee for ChangeSalaryTransactionImpl {
         self.salary
     }
 }
+impl Transaction<()> for ChangeSalaryTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change salary");
+    }
+}
 
 #[derive(Debug, Clone)]
 struct ChangeHourlyTransactionImpl {
@@ -2096,6 +1727,11 @@ impl HourlyChangeableEmployee for ChangeHourlyTransactionImpl {
     }
     fn get_hourly_rate(&self) -> f32 {
         self.hourly_rate
+    }
+}
+impl Transaction<()> for ChangeHourlyTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change hourly");
     }
 }
 
@@ -2123,6 +1759,11 @@ impl CommissionedChangeableEmployee for ChangeCommissionedTransactionImpl {
         self.commission_rate
     }
 }
+impl Transaction<()> for ChangeCommissionedTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change commissioned");
+    }
+}
 
 #[derive(Debug, Clone)]
 struct ChangeDirectTransactionImpl {
@@ -2148,6 +1789,11 @@ impl DirectChangeableEmployee for ChangeDirectTransactionImpl {
         &self.account
     }
 }
+impl Transaction<()> for ChangeDirectTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change direct");
+    }
+}
 
 #[derive(Debug, Clone)]
 struct ChangeMailTransactionImpl {
@@ -2169,6 +1815,11 @@ impl MailChangeableEmployee for ChangeMailTransactionImpl {
         &self.address
     }
 }
+impl Transaction<()> for ChangeMailTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change mail");
+    }
+}
 
 #[derive(Debug, Clone)]
 struct ChangeHoldTransactionImpl {
@@ -2184,6 +1835,11 @@ impl HaveEmployeeDao<()> for ChangeHoldTransactionImpl {
 impl HoldChangeableEmployee for ChangeHoldTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
+    }
+}
+impl Transaction<()> for ChangeHoldTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change hold");
     }
 }
 
@@ -2211,6 +1867,11 @@ impl UnionChangeableEmployee for ChangeUnionMemberTransactionImpl {
         self.dues
     }
 }
+impl Transaction<()> for ChangeUnionMemberTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change union member");
+    }
+}
 
 #[derive(Debug, Clone)]
 struct ChangeNoMemberTransactionImpl {
@@ -2226,6 +1887,11 @@ impl HaveEmployeeDao<()> for ChangeNoMemberTransactionImpl {
 impl NoAffiliationChangeableEmployee for ChangeNoMemberTransactionImpl {
     fn get_emp_id(&self) -> EmployeeId {
         self.emp_id
+    }
+}
+impl Transaction<()> for ChangeNoMemberTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("change no member");
     }
 }
 
@@ -2245,6 +1911,11 @@ impl PayableEmployee for PaydayTransactionImpl {
         self.pay_date
     }
 }
+impl Transaction<()> for PaydayTransactionImpl {
+    fn tx_execute(&mut self) {
+        self.execute().run(&mut ()).expect("payday");
+    }
+}
 
 trait TransactionSource<Ctx> {
     fn get_transactions(&self) -> Vec<Box<dyn Transaction<Ctx>>>;
@@ -2252,98 +1923,7 @@ trait TransactionSource<Ctx> {
 trait Transaction<Ctx> {
     fn tx_execute(&mut self);
 }
-impl Transaction<()> for AddSalariedEmployeeTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("add salaried employee");
-    }
-}
-impl Transaction<()> for AddHourlyEmployeeTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("add hourly employee");
-    }
-}
-impl Transaction<()> for AddCommissionedEmployeeTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute()
-            .run(&mut ())
-            .expect("add commissioned employee");
-    }
-}
-impl Transaction<()> for DeleteEmployeeTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("delete employee");
-    }
-}
-impl Transaction<()> for TimeCardTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("time card");
-    }
-}
-impl Transaction<()> for SalesReceiptTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("sales receipt");
-    }
-}
-impl Transaction<()> for ServiceChargeTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("service charge");
-    }
-}
-impl Transaction<()> for ChangeNameTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change name");
-    }
-}
-impl Transaction<()> for ChangeAddressTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change address");
-    }
-}
-impl Transaction<()> for ChangeSalaryTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change salary");
-    }
-}
-impl Transaction<()> for ChangeHourlyTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change hourly");
-    }
-}
-impl Transaction<()> for ChangeCommissionedTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change commissioned");
-    }
-}
-impl Transaction<()> for ChangeHoldTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change hold");
-    }
-}
-impl Transaction<()> for ChangeDirectTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change direct");
-    }
-}
-impl Transaction<()> for ChangeMailTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change mail");
-    }
-}
-impl Transaction<()> for ChangeUnionMemberTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change union member");
-    }
-}
-impl Transaction<()> for ChangeNoMemberTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change no member");
-    }
-}
-impl Transaction<()> for PaydayTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("payday");
-    }
-}
+
 fn from_command(command: Command, db: MockDb) -> Box<dyn Transaction<()>> {
     match command {
         Command::AddSalaryEmp {
@@ -3540,6 +3120,7 @@ struct PayrollApp {
     db: MockDb,
     input: String,
 }
+
 impl TransactionSource<()> for PayrollApp {
     fn get_transactions(&self) -> Vec<Box<dyn Transaction<()>>> {
         use parsec_rs::Parser;
@@ -3554,6 +3135,7 @@ impl TransactionSource<()> for PayrollApp {
             .unwrap_or_default()
     }
 }
+
 impl PayrollApp {
     pub fn new(file_name: &str) -> Self {
         let input = std::fs::read_to_string(file_name).expect("read file");
