@@ -1440,8 +1440,10 @@ impl SalaryEmployee for AddSalariedEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for AddSalariedEmployeeTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("add salaried employee");
+    fn execute(&mut self) {
+        AddSalaryEmployeeTransaction::execute(self)
+            .run(&mut ())
+            .expect("add salaried employee");
     }
 }
 
@@ -1474,8 +1476,10 @@ impl HourlyEmployee for AddHourlyEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for AddHourlyEmployeeTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("add hourly employee");
+    fn execute(&mut self) {
+        AddHourlyEmployeeTransaction::execute(self)
+            .run(&mut ())
+            .expect("add hourly employee");
     }
 }
 
@@ -1512,8 +1516,8 @@ impl CommissionedEmployee for AddCommissionedEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for AddCommissionedEmployeeTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute()
+    fn execute(&mut self) {
+        AddCommissionedEmployeeTransaction::execute(self)
             .run(&mut ())
             .expect("add commissioned employee");
     }
@@ -1536,8 +1540,10 @@ impl DeletableEmployee for DeleteEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for DeleteEmployeeTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("delete employee");
+    fn execute(&mut self) {
+        DeleteEmployeeTransaction::execute(self)
+            .run(&mut ())
+            .expect("delete employee");
     }
 }
 
@@ -1566,8 +1572,10 @@ impl TimeCardEmployee for TimeCardTransactionImpl {
     }
 }
 impl Transaction<()> for TimeCardTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("time card");
+    fn execute(&mut self) {
+        TimeCardTransaction::execute(self)
+            .run(&mut ())
+            .expect("time card");
     }
 }
 
@@ -1596,8 +1604,10 @@ impl SalesReceiptEmployee for SalesReceiptTransactionImpl {
     }
 }
 impl Transaction<()> for SalesReceiptTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("sales receipt");
+    fn execute(&mut self) {
+        SalesReceiptTransaction::execute(self)
+            .run(&mut ())
+            .expect("sales receipt");
     }
 }
 
@@ -1626,8 +1636,10 @@ impl ServiceChargeableMember for ServiceChargeTransactionImpl {
     }
 }
 impl Transaction<()> for ServiceChargeTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("service charge");
+    fn execute(&mut self) {
+        ServiceChargeTransaction::execute(self)
+            .run(&mut ())
+            .expect("service charge");
     }
 }
 
@@ -1652,8 +1664,10 @@ impl NameChangeableEmployee for ChangeNameTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeNameTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change name");
+    fn execute(&mut self) {
+        ChangeNameTransaction::execute(self)
+            .run(&mut ())
+            .expect("change name");
     }
 }
 
@@ -1678,8 +1692,10 @@ impl AddressChangeableEmployee for ChangeAddressTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeAddressTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change address");
+    fn execute(&mut self) {
+        ChangeAddressTransaction::execute(self)
+            .run(&mut ())
+            .expect("change address");
     }
 }
 
@@ -1704,8 +1720,10 @@ impl SalaryChangeableEmployee for ChangeSalaryTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeSalaryTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change salary");
+    fn execute(&mut self) {
+        ChangeSalariedTransaction::execute(self)
+            .run(&mut ())
+            .expect("change salary");
     }
 }
 
@@ -1730,8 +1748,10 @@ impl HourlyChangeableEmployee for ChangeHourlyTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeHourlyTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change hourly");
+    fn execute(&mut self) {
+        ChangeHourlyTransaction::execute(self)
+            .run(&mut ())
+            .expect("change hourly");
     }
 }
 
@@ -1760,8 +1780,10 @@ impl CommissionedChangeableEmployee for ChangeCommissionedTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeCommissionedTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change commissioned");
+    fn execute(&mut self) {
+        ChangeCommissionedTransaction::execute(self)
+            .run(&mut ())
+            .expect("change commissioned");
     }
 }
 
@@ -1790,8 +1812,10 @@ impl DirectChangeableEmployee for ChangeDirectTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeDirectTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change direct");
+    fn execute(&mut self) {
+        ChangeDirectTransaction::execute(self)
+            .run(&mut ())
+            .expect("change direct");
     }
 }
 
@@ -1816,8 +1840,10 @@ impl MailChangeableEmployee for ChangeMailTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeMailTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change mail");
+    fn execute(&mut self) {
+        ChangeMailTransaction::execute(self)
+            .run(&mut ())
+            .expect("change mail");
     }
 }
 
@@ -1838,8 +1864,10 @@ impl HoldChangeableEmployee for ChangeHoldTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeHoldTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change hold");
+    fn execute(&mut self) {
+        ChangeHoldTransaction::execute(self)
+            .run(&mut ())
+            .expect("change hold");
     }
 }
 
@@ -1868,8 +1896,10 @@ impl UnionChangeableEmployee for ChangeUnionMemberTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeUnionMemberTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change union member");
+    fn execute(&mut self) {
+        ChangeUnionMemberTransaction::execute(self)
+            .run(&mut ())
+            .expect("change union member");
     }
 }
 
@@ -1890,8 +1920,10 @@ impl NoAffiliationChangeableEmployee for ChangeNoMemberTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeNoMemberTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("change no member");
+    fn execute(&mut self) {
+        ChangeUnaffiliatedTransaction::execute(self)
+            .run(&mut ())
+            .expect("change no member");
     }
 }
 
@@ -1912,8 +1944,10 @@ impl PayableEmployee for PaydayTransactionImpl {
     }
 }
 impl Transaction<()> for PaydayTransactionImpl {
-    fn tx_execute(&mut self) {
-        self.execute().run(&mut ()).expect("payday");
+    fn execute(&mut self) {
+        PaydayTransaction::execute(self)
+            .run(&mut ())
+            .expect("payday");
     }
 }
 
@@ -1921,7 +1955,7 @@ trait TransactionSource<Ctx> {
     fn get_transactions(&self) -> Vec<Box<dyn Transaction<Ctx>>>;
 }
 trait Transaction<Ctx> {
-    fn tx_execute(&mut self);
+    fn execute(&mut self);
 }
 
 fn from_command(command: Command, db: MockDb) -> Box<dyn Transaction<()>> {
@@ -3147,7 +3181,7 @@ impl PayrollApp {
     }
     pub fn run(&mut self) {
         for mut tran in self.get_transactions() {
-            tran.tx_execute();
+            tran.execute();
             println!("{:#?}", self.db);
         }
     }
