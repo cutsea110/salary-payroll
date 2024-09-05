@@ -3123,11 +3123,11 @@ pub mod parser {
 }
 use parser::*;
 
-struct PayrollTestApp {
+struct TestPayrollApp {
     db: MockDb,
     input: String,
 }
-impl TransactionSource<()> for PayrollTestApp {
+impl TransactionSource<()> for TestPayrollApp {
     fn get_transactions(&self) -> Vec<Box<dyn Transaction<()>>> {
         use parsec_rs::Parser;
 
@@ -3141,7 +3141,7 @@ impl TransactionSource<()> for PayrollTestApp {
             .unwrap_or_default()
     }
 }
-impl PayrollTestApp {
+impl TestPayrollApp {
     pub fn new(file_name: &str) -> Self {
         let input = std::fs::read_to_string(file_name).expect("read file");
 
@@ -3160,5 +3160,5 @@ impl PayrollTestApp {
 }
 
 fn main() {
-    PayrollTestApp::new("script/test.scr").run();
+    TestPayrollApp::new("script/test.scr").run();
 }
