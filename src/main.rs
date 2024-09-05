@@ -7,7 +7,7 @@ mod domain {
     use chrono::NaiveDate;
     use core::fmt::Debug;
     use dyn_clone::DynClone;
-    use std::{any::Any, cell::RefCell, ops::RangeInclusive, rc::Rc};
+    use std::{any::Any, ops::RangeInclusive};
 
     pub type EmployeeId = u32;
     pub type MemberId = u32;
@@ -17,20 +17,20 @@ mod domain {
         emp_id: EmployeeId,
         name: String,
         address: String,
-        classification: Rc<RefCell<dyn PaymentClassification>>,
-        schedule: Rc<RefCell<dyn PaymentSchedule>>,
-        method: Rc<RefCell<dyn PaymentMethod>>,
-        affiliation: Rc<RefCell<dyn Affiliation>>,
+        classification: Box<dyn PaymentClassification>,
+        schedule: Box<dyn PaymentSchedule>,
+        method: Box<dyn PaymentMethod>,
+        affiliation: Box<dyn Affiliation>,
     }
     impl Employee {
         pub fn new(
             emp_id: EmployeeId,
             name: &str,
             address: &str,
-            classification: Rc<RefCell<dyn PaymentClassification>>,
-            schedule: Rc<RefCell<dyn PaymentSchedule>>,
-            method: Rc<RefCell<dyn PaymentMethod>>,
-            affiliation: Rc<RefCell<dyn Affiliation>>,
+            classification: Box<dyn PaymentClassification>,
+            schedule: Box<dyn PaymentSchedule>,
+            method: Box<dyn PaymentMethod>,
+            affiliation: Box<dyn Affiliation>,
         ) -> Self {
             Self {
                 emp_id,
@@ -43,19 +43,19 @@ mod domain {
             }
         }
         pub fn is_pay_date(&self, date: NaiveDate) -> bool {
-            self.schedule.borrow().is_pay_date(date)
+            self.schedule.is_pay_date(date)
         }
         pub fn get_pay_period(&self, date: NaiveDate) -> RangeInclusive<NaiveDate> {
-            self.schedule.borrow().get_pay_period(date)
+            self.schedule.get_pay_period(date)
         }
         pub fn payday(&self, pc: &mut PayCheck) {
-            let gross_pay = self.classification.borrow().calculate_pay(&pc);
-            let deductions = self.affiliation.borrow().calculate_deductions(&pc);
+            let gross_pay = self.classification.calculate_pay(&pc);
+            let deductions = self.affiliation.calculate_deductions(&pc);
             let net_pay = gross_pay - deductions;
             pc.set_gross_pay(gross_pay);
             pc.set_deductions(deductions);
             pc.set_net_pay(net_pay);
-            self.method.borrow().pay(pc);
+            self.method.pay(pc);
         }
         pub fn get_emp_id(&self) -> EmployeeId {
             self.emp_id
@@ -66,25 +66,22 @@ mod domain {
         pub fn set_address(&mut self, address: &str) {
             self.address = address.to_string();
         }
-        pub fn get_classification(&self) -> Rc<RefCell<dyn PaymentClassification>> {
+        pub fn get_classification(&self) -> Box<dyn PaymentClassification> {
             self.classification.clone()
         }
-        pub fn set_classification(
-            &mut self,
-            classification: Rc<RefCell<dyn PaymentClassification>>,
-        ) {
+        pub fn set_classification(&mut self, classification: Box<dyn PaymentClassification>) {
             self.classification = classification;
         }
-        pub fn set_schedule(&mut self, schedule: Rc<RefCell<dyn PaymentSchedule>>) {
+        pub fn set_schedule(&mut self, schedule: Box<dyn PaymentSchedule>) {
             self.schedule = schedule;
         }
-        pub fn set_method(&mut self, method: Rc<RefCell<dyn PaymentMethod>>) {
+        pub fn set_method(&mut self, method: Box<dyn PaymentMethod>) {
             self.method = method;
         }
-        pub fn get_affiliation(&self) -> Rc<RefCell<dyn Affiliation>> {
+        pub fn get_affiliation(&self) -> Box<dyn Affiliation> {
             self.affiliation.clone()
         }
-        pub fn set_affiliation(&mut self, affiliation: Rc<RefCell<dyn Affiliation>>) {
+        pub fn set_affiliation(&mut self, affiliation: Box<dyn Affiliation>) {
             self.affiliation = affiliation;
         }
     }
@@ -512,7 +509,6 @@ mod affiliation {
 }
 
 mod tx_base {
-    use std::{cell::RefCell, rc::Rc};
     use thiserror::Error;
     use tx_rs::Tx;
 
@@ -553,14 +549,14 @@ mod tx_base {
             emp_id: EmployeeId,
             name: &str,
             address: &str,
-            classification: Rc<RefCell<dyn PaymentClassification>>,
-            schedule: Rc<RefCell<dyn PaymentSchedule>>,
+            classification: Box<dyn PaymentClassification>,
+            schedule: Box<dyn PaymentSchedule>,
         ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
         {
-            let method = Rc::new(RefCell::new(HoldMethod));
-            let affiliation = Rc::new(RefCell::new(NoAffiliation));
+            let method = Box::new(HoldMethod);
+            let affiliation = Box::new(NoAffiliation);
             let emp = Employee::new(
                 emp_id,
                 name,
@@ -609,8 +605,8 @@ mod tx_base {
         fn execute<'a>(
             &'a self,
             emp_id: EmployeeId,
-            classification: Rc<RefCell<dyn PaymentClassification>>,
-            schedule: Rc<RefCell<dyn PaymentSchedule>>,
+            classification: Box<dyn PaymentClassification>,
+            schedule: Box<dyn PaymentSchedule>,
         ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -629,7 +625,7 @@ mod tx_base {
         fn execute<'a>(
             &'a self,
             emp_id: EmployeeId,
-            method: Rc<RefCell<dyn PaymentMethod>>,
+            method: Box<dyn PaymentMethod>,
         ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             Ctx: 'a,
@@ -648,7 +644,7 @@ mod tx_base {
             &'a self,
             emp_id: EmployeeId,
             record_membership: F,
-            affiliation: Rc<RefCell<dyn Affiliation>>,
+            affiliation: Box<dyn Affiliation>,
         ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
         where
             F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError>,
@@ -667,7 +663,6 @@ mod tx_base {
 
 mod general_tx {
     use chrono::NaiveDate;
-    use std::{cell::RefCell, rc::Rc};
     use tx_rs::Tx;
 
     use crate::classification::{
@@ -697,9 +692,8 @@ mod general_tx {
             let emp_id = self.get_emp_id();
             let name = self.get_name();
             let address = self.get_address();
-            let classification =
-                Rc::new(RefCell::new(SalariedClassification::new(self.get_salary())));
-            let schedule = Rc::new(RefCell::new(MonthlySchedule));
+            let classification = Box::new(SalariedClassification::new(self.get_salary()));
+            let schedule = Box::new(MonthlySchedule);
 
             AddEmployeeTransaction::<Ctx>::execute(
                 self,
@@ -735,10 +729,8 @@ mod general_tx {
             let emp_id = self.get_emp_id();
             let name = self.get_name();
             let address = self.get_address();
-            let classification = Rc::new(RefCell::new(HourlyClassification::new(
-                self.get_hourly_rate(),
-            )));
-            let schedule = Rc::new(RefCell::new(WeeklySchedule));
+            let classification = Box::new(HourlyClassification::new(self.get_hourly_rate()));
+            let schedule = Box::new(WeeklySchedule);
 
             AddEmployeeTransaction::<Ctx>::execute(
                 self,
@@ -775,11 +767,11 @@ mod general_tx {
             let emp_id = self.get_emp_id();
             let name = self.get_name();
             let address = self.get_address();
-            let classification = Rc::new(RefCell::new(CommissionedClassification::new(
+            let classification = Box::new(CommissionedClassification::new(
                 self.get_salary(),
                 self.get_commission_rate(),
-            )));
-            let schedule = Rc::new(RefCell::new(BiweeklySchedule));
+            ));
+            let schedule = Box::new(BiweeklySchedule);
 
             AddEmployeeTransaction::<Ctx>::execute(
                 self,
@@ -827,7 +819,6 @@ mod general_tx {
                     .run(ctx)
                     .map_err(EmployeeUsecaseError::NotFound)?;
                 emp.get_classification()
-                    .borrow_mut()
                     .as_any_mut()
                     .downcast_mut::<HourlyClassification>()
                     .ok_or(EmployeeUsecaseError::NotHourlySalary(format!(
@@ -859,7 +850,6 @@ mod general_tx {
                     .run(ctx)
                     .map_err(EmployeeUsecaseError::NotFound)?;
                 emp.get_classification()
-                    .borrow_mut()
                     .as_any_mut()
                     .downcast_mut::<CommissionedClassification>()
                     .ok_or(EmployeeUsecaseError::NotCommissionedSalary(format!(
@@ -959,8 +949,6 @@ mod general_tx {
 use general_tx::*;
 
 mod classification_tx {
-    use std::{cell::RefCell, rc::Rc};
-
     use crate::classification::{
         CommissionedClassification, HourlyClassification, SalariedClassification,
     };
@@ -983,8 +971,8 @@ mod classification_tx {
             ChangeClassificationTransaction::<Ctx>::execute(
                 self,
                 self.get_emp_id(),
-                Rc::new(RefCell::new(SalariedClassification::new(self.get_salary()))),
-                Rc::new(RefCell::new(MonthlySchedule)),
+                Box::new(SalariedClassification::new(self.get_salary())),
+                Box::new(MonthlySchedule),
             )
         }
     }
@@ -1008,10 +996,8 @@ mod classification_tx {
             ChangeClassificationTransaction::<Ctx>::execute(
                 self,
                 self.get_emp_id(),
-                Rc::new(RefCell::new(HourlyClassification::new(
-                    self.get_hourly_rate(),
-                ))),
-                Rc::new(RefCell::new(WeeklySchedule)),
+                Box::new(HourlyClassification::new(self.get_hourly_rate())),
+                Box::new(WeeklySchedule),
             )
         }
     }
@@ -1036,11 +1022,11 @@ mod classification_tx {
             ChangeClassificationTransaction::<Ctx>::execute(
                 self,
                 self.get_emp_id(),
-                Rc::new(RefCell::new(CommissionedClassification::new(
+                Box::new(CommissionedClassification::new(
                     self.get_salary(),
                     self.get_commission_rate(),
-                ))),
-                Rc::new(RefCell::new(BiweeklySchedule)),
+                )),
+                Box::new(BiweeklySchedule),
             )
         }
     }
@@ -1053,8 +1039,6 @@ mod classification_tx {
 use classification_tx::*;
 
 mod method_tx {
-    use std::{cell::RefCell, rc::Rc};
-
     use crate::domain::EmployeeId;
     use crate::method::{DirectMethod, HoldMethod, MailMethod};
     use crate::tx_base::{ChangeMethodTransaction, EmployeeUsecaseError};
@@ -1074,10 +1058,10 @@ mod method_tx {
             ChangeMethodTransaction::<Ctx>::execute(
                 self,
                 self.get_emp_id(),
-                Rc::new(RefCell::new(DirectMethod::new(
+                Box::new(DirectMethod::new(
                     self.get_bank().to_string(),
                     self.get_account().to_string(),
-                ))),
+                )),
             )
         }
     }
@@ -1101,9 +1085,7 @@ mod method_tx {
             ChangeMethodTransaction::<Ctx>::execute(
                 self,
                 self.get_emp_id(),
-                Rc::new(RefCell::new(MailMethod::new(
-                    self.get_address().to_string(),
-                ))),
+                Box::new(MailMethod::new(self.get_address().to_string())),
             )
         }
     }
@@ -1123,11 +1105,7 @@ mod method_tx {
         where
             Ctx: 'a,
         {
-            ChangeMethodTransaction::<Ctx>::execute(
-                self,
-                self.get_emp_id(),
-                Rc::new(RefCell::new(HoldMethod)),
-            )
+            ChangeMethodTransaction::<Ctx>::execute(self, self.get_emp_id(), Box::new(HoldMethod))
         }
     }
     // blanket implementation
@@ -1140,7 +1118,6 @@ use method_tx::*;
 
 mod affiliation_tx {
     use chrono::NaiveDate;
-    use std::{cell::RefCell, rc::Rc};
     use tx_rs::Tx;
 
     use crate::affiliation::{NoAffiliation, ServiceCharge, UnionAffiliation};
@@ -1169,7 +1146,6 @@ mod affiliation_tx {
                     .run(ctx)
                     .map_err(EmployeeUsecaseError::NotFound)?;
                 emp.get_affiliation()
-                    .borrow_mut()
                     .as_any_mut()
                     .downcast_mut::<UnionAffiliation>()
                     .ok_or(EmployeeUsecaseError::NotUnionMember(format!(
@@ -1211,10 +1187,7 @@ mod affiliation_tx {
                         .run(ctx)
                         .map_err(EmployeeUsecaseError::AddUnionMemberFailed)
                 },
-                Rc::new(RefCell::new(UnionAffiliation::new(
-                    self.get_member_id(),
-                    self.get_dues(),
-                ))),
+                Box::new(UnionAffiliation::new(self.get_member_id(), self.get_dues())),
             )
         }
     }
@@ -1240,7 +1213,6 @@ mod affiliation_tx {
                 |ctx, emp| {
                     let member_id = emp
                         .get_affiliation()
-                        .borrow()
                         .as_any()
                         .downcast_ref::<UnionAffiliation>()
                         .map_or(
@@ -1255,7 +1227,7 @@ mod affiliation_tx {
                         .run(ctx)
                         .map_err(EmployeeUsecaseError::RemoveUnionMemberFailed)
                 },
-                Rc::new(RefCell::new(NoAffiliation)),
+                Box::new(NoAffiliation),
             )
         }
     }
