@@ -1,5 +1,6 @@
 use chrono::NaiveDate;
 use core::fmt::Debug;
+use tx_base::EmployeeUsecaseError;
 use tx_rs::Tx;
 
 mod domain {
@@ -1440,10 +1441,10 @@ impl SalaryEmployee for AddSalariedEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for AddSalariedEmployeeTransactionImpl {
-    fn execute(&mut self) {
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
         AddSalaryEmployeeTransaction::execute(self)
             .run(&mut ())
-            .expect("add salaried employee");
+            .map(|_| ())
     }
 }
 
@@ -1476,10 +1477,10 @@ impl HourlyEmployee for AddHourlyEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for AddHourlyEmployeeTransactionImpl {
-    fn execute(&mut self) {
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
         AddHourlyEmployeeTransaction::execute(self)
             .run(&mut ())
-            .expect("add hourly employee");
+            .map(|_| ())
     }
 }
 
@@ -1516,10 +1517,10 @@ impl CommissionedEmployee for AddCommissionedEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for AddCommissionedEmployeeTransactionImpl {
-    fn execute(&mut self) {
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
         AddCommissionedEmployeeTransaction::execute(self)
             .run(&mut ())
-            .expect("add commissioned employee");
+            .map(|_| ())
     }
 }
 
@@ -1540,10 +1541,10 @@ impl DeletableEmployee for DeleteEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for DeleteEmployeeTransactionImpl {
-    fn execute(&mut self) {
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
         DeleteEmployeeTransaction::execute(self)
             .run(&mut ())
-            .expect("delete employee");
+            .map(|_| ())
     }
 }
 
@@ -1572,10 +1573,8 @@ impl TimeCardEmployee for TimeCardTransactionImpl {
     }
 }
 impl Transaction<()> for TimeCardTransactionImpl {
-    fn execute(&mut self) {
-        TimeCardTransaction::execute(self)
-            .run(&mut ())
-            .expect("time card");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        TimeCardTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1604,10 +1603,8 @@ impl SalesReceiptEmployee for SalesReceiptTransactionImpl {
     }
 }
 impl Transaction<()> for SalesReceiptTransactionImpl {
-    fn execute(&mut self) {
-        SalesReceiptTransaction::execute(self)
-            .run(&mut ())
-            .expect("sales receipt");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        SalesReceiptTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1636,10 +1633,8 @@ impl ServiceChargeableMember for ServiceChargeTransactionImpl {
     }
 }
 impl Transaction<()> for ServiceChargeTransactionImpl {
-    fn execute(&mut self) {
-        ServiceChargeTransaction::execute(self)
-            .run(&mut ())
-            .expect("service charge");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        ServiceChargeTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1664,10 +1659,8 @@ impl NameChangeableEmployee for ChangeNameTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeNameTransactionImpl {
-    fn execute(&mut self) {
-        ChangeNameTransaction::execute(self)
-            .run(&mut ())
-            .expect("change name");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        ChangeNameTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1692,10 +1685,8 @@ impl AddressChangeableEmployee for ChangeAddressTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeAddressTransactionImpl {
-    fn execute(&mut self) {
-        ChangeAddressTransaction::execute(self)
-            .run(&mut ())
-            .expect("change address");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        ChangeAddressTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1720,10 +1711,8 @@ impl SalaryChangeableEmployee for ChangeSalaryTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeSalaryTransactionImpl {
-    fn execute(&mut self) {
-        ChangeSalariedTransaction::execute(self)
-            .run(&mut ())
-            .expect("change salary");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        ChangeSalariedTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1748,10 +1737,8 @@ impl HourlyChangeableEmployee for ChangeHourlyTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeHourlyTransactionImpl {
-    fn execute(&mut self) {
-        ChangeHourlyTransaction::execute(self)
-            .run(&mut ())
-            .expect("change hourly");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        ChangeHourlyTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1780,10 +1767,8 @@ impl CommissionedChangeableEmployee for ChangeCommissionedTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeCommissionedTransactionImpl {
-    fn execute(&mut self) {
-        ChangeCommissionedTransaction::execute(self)
-            .run(&mut ())
-            .expect("change commissioned");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        ChangeCommissionedTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1812,10 +1797,8 @@ impl DirectChangeableEmployee for ChangeDirectTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeDirectTransactionImpl {
-    fn execute(&mut self) {
-        ChangeDirectTransaction::execute(self)
-            .run(&mut ())
-            .expect("change direct");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        ChangeDirectTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1840,10 +1823,8 @@ impl MailChangeableEmployee for ChangeMailTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeMailTransactionImpl {
-    fn execute(&mut self) {
-        ChangeMailTransaction::execute(self)
-            .run(&mut ())
-            .expect("change mail");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        ChangeMailTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1864,10 +1845,8 @@ impl HoldChangeableEmployee for ChangeHoldTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeHoldTransactionImpl {
-    fn execute(&mut self) {
-        ChangeHoldTransaction::execute(self)
-            .run(&mut ())
-            .expect("change hold");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        ChangeHoldTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1896,10 +1875,8 @@ impl UnionChangeableEmployee for ChangeUnionMemberTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeUnionMemberTransactionImpl {
-    fn execute(&mut self) {
-        ChangeUnionMemberTransaction::execute(self)
-            .run(&mut ())
-            .expect("change union member");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        ChangeUnionMemberTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1920,10 +1897,8 @@ impl NoAffiliationChangeableEmployee for ChangeNoMemberTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeNoMemberTransactionImpl {
-    fn execute(&mut self) {
-        ChangeUnaffiliatedTransaction::execute(self)
-            .run(&mut ())
-            .expect("change no member");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        ChangeUnaffiliatedTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1944,10 +1919,8 @@ impl PayableEmployee for PaydayTransactionImpl {
     }
 }
 impl Transaction<()> for PaydayTransactionImpl {
-    fn execute(&mut self) {
-        PaydayTransaction::execute(self)
-            .run(&mut ())
-            .expect("payday");
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+        PaydayTransaction::execute(self).run(&mut ())
     }
 }
 
@@ -1955,7 +1928,7 @@ trait TransactionSource<Ctx> {
     fn get_transactions(&self) -> Vec<Box<dyn Transaction<Ctx>>>;
 }
 trait Transaction<Ctx> {
-    fn execute(&mut self);
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError>;
 }
 
 fn from_command(command: Command, db: MockDb) -> Box<dyn Transaction<()>> {
@@ -3150,12 +3123,11 @@ pub mod parser {
 }
 use parser::*;
 
-struct PayrollApp {
+struct PayrollTestApp {
     db: MockDb,
     input: String,
 }
-
-impl TransactionSource<()> for PayrollApp {
+impl TransactionSource<()> for PayrollTestApp {
     fn get_transactions(&self) -> Vec<Box<dyn Transaction<()>>> {
         use parsec_rs::Parser;
 
@@ -3169,8 +3141,7 @@ impl TransactionSource<()> for PayrollApp {
             .unwrap_or_default()
     }
 }
-
-impl PayrollApp {
+impl PayrollTestApp {
     pub fn new(file_name: &str) -> Self {
         let input = std::fs::read_to_string(file_name).expect("read file");
 
@@ -3181,12 +3152,13 @@ impl PayrollApp {
     }
     pub fn run(&mut self) {
         for mut tran in self.get_transactions() {
-            tran.execute();
+            // TODO: handle error
+            let _ = tran.execute();
             println!("{:#?}", self.db);
         }
     }
 }
 
 fn main() {
-    PayrollApp::new("script/test.scr").run();
+    PayrollTestApp::new("script/test.scr").run();
 }
