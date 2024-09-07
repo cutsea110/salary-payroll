@@ -3095,25 +3095,12 @@ impl Transaction<()> for PaydayTransactionImpl {
     }
 }
 
-mod tx_app {
-    use crate::abstract_tx::EmployeeUsecaseError;
-
-    pub trait TransactionSource<Ctx> {
-        fn get_transactions(&self) -> Vec<Box<dyn Transaction<Ctx>>>;
-    }
-    pub trait Transaction<Ctx> {
-        fn execute(&mut self) -> Result<(), EmployeeUsecaseError>;
-    }
-
-    pub trait TransactionApplication<Ctx>: TransactionSource<Ctx> {
-        fn run(&mut self) {
-            for mut tran in self.get_transactions() {
-                let _ = tran.execute();
-            }
-        }
-    }
+trait TransactionSource<Ctx> {
+    fn get_transactions(&self) -> Vec<Box<dyn Transaction<Ctx>>>;
 }
-use tx_app::*;
+trait Transaction<Ctx> {
+    fn execute(&mut self) -> Result<(), EmployeeUsecaseError>;
+}
 
 struct TestPayrollApp {
     db: MockDb,
@@ -3133,7 +3120,6 @@ impl TransactionSource<()> for TestPayrollApp {
             .unwrap_or_default()
     }
 }
-impl TransactionApplication<()> for TestPayrollApp {}
 impl TestPayrollApp {
     pub fn new(file_name: &str) -> Self {
         let input = std::fs::read_to_string(file_name).expect("read file");
@@ -3141,6 +3127,13 @@ impl TestPayrollApp {
         Self {
             db: MockDb::new(),
             input,
+        }
+    }
+    pub fn run(&mut self) {
+        for mut tran in self.get_transactions() {
+            // TODO: handle error
+            let _ = tran.execute();
+            println!("{:#?}", self.db);
         }
     }
 }
