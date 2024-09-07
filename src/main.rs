@@ -1,6 +1,3 @@
-use chrono::NaiveDate;
-use core::fmt::Debug;
-
 mod payroll_domain {
     use chrono::NaiveDate;
     use core::fmt::Debug;
@@ -145,7 +142,6 @@ mod payroll_domain {
         }
     }
 }
-use payroll_domain::*;
 
 mod dao {
     use thiserror::Error;
@@ -1267,156 +1263,10 @@ mod affiliation_tx {
     }
 }
 
-mod mock_db {
-    use std::{cell::RefCell, collections::HashMap, rc::Rc};
-
-    use crate::dao::{EmployeeDao, EmployeeDaoError};
-    use crate::payroll_domain::{Employee, EmployeeId, MemberId, PayCheck};
-
-    #[derive(Debug, Clone)]
-    pub struct MockDb {
-        employees: Rc<RefCell<HashMap<EmployeeId, Employee>>>,
-        union_members: Rc<RefCell<HashMap<MemberId, EmployeeId>>>,
-        paychecks: Rc<RefCell<HashMap<EmployeeId, PayCheck>>>,
-    }
-    impl MockDb {
-        pub fn new() -> Self {
-            Self {
-                employees: Rc::new(RefCell::new(HashMap::new())),
-                union_members: Rc::new(RefCell::new(HashMap::new())),
-                paychecks: Rc::new(RefCell::new(HashMap::new())),
-            }
-        }
-    }
-    impl EmployeeDao<()> for MockDb {
-        fn insert(
-            &self,
-            emp: Employee,
-        ) -> impl tx_rs::Tx<(), Item = EmployeeId, Err = EmployeeDaoError> {
-            tx_rs::with_tx(move |_| {
-                let emp_id = emp.get_emp_id();
-                if self.employees.borrow().contains_key(&emp_id) {
-                    return Err(EmployeeDaoError::InsertError(format!(
-                        "emp_id={} already exists",
-                        emp_id
-                    )));
-                }
-                self.employees.borrow_mut().insert(emp_id, emp);
-                Ok(emp_id)
-            })
-        }
-        fn delete(
-            &self,
-            emp_id: EmployeeId,
-        ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
-            tx_rs::with_tx(move |_| {
-                if self.employees.borrow_mut().remove(&emp_id).is_none() {
-                    return Err(EmployeeDaoError::DeleteError(format!(
-                        "emp_id={} not found",
-                        emp_id
-                    )));
-                }
-                Ok(())
-            })
-        }
-        fn fetch(
-            &self,
-            emp_id: EmployeeId,
-        ) -> impl tx_rs::Tx<(), Item = Employee, Err = EmployeeDaoError> {
-            tx_rs::with_tx(move |_| match self.employees.borrow().get(&emp_id) {
-                Some(emp) => Ok(emp.clone()),
-                None => Err(EmployeeDaoError::FetchError(format!(
-                    "emp_id={} not found",
-                    emp_id
-                ))),
-            })
-        }
-        fn update(&self, emp: Employee) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
-            tx_rs::with_tx(move |_| {
-                let emp_id = emp.get_emp_id();
-                if !self.employees.borrow().contains_key(&emp_id) {
-                    return Err(EmployeeDaoError::UpdateError(format!(
-                        "emp_id={} not found",
-                        emp_id
-                    )));
-                }
-                self.employees.borrow_mut().insert(emp_id, emp);
-                Ok(())
-            })
-        }
-        fn get_all(&self) -> impl tx_rs::Tx<(), Item = Vec<Employee>, Err = EmployeeDaoError> {
-            tx_rs::with_tx(move |_| Ok(self.employees.borrow().values().cloned().collect()))
-        }
-
-        fn add_union_member(
-            &self,
-            member_id: MemberId,
-            emp_id: EmployeeId,
-        ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
-            tx_rs::with_tx(move |_| {
-                if self.union_members.borrow().contains_key(&member_id) {
-                    return Err(EmployeeDaoError::InsertError(format!(
-                        "member_id={} already exists",
-                        member_id
-                    )));
-                }
-                if self.union_members.borrow().values().any(|&v| v == emp_id) {
-                    return Err(EmployeeDaoError::InsertError(format!(
-                        "emp_id={} already exists",
-                        emp_id
-                    )));
-                }
-                self.union_members.borrow_mut().insert(member_id, emp_id);
-                Ok(())
-            })
-        }
-        fn remove_union_member(
-            &self,
-            member_id: MemberId,
-        ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
-            tx_rs::with_tx(move |_| {
-                if self.union_members.borrow_mut().remove(&member_id).is_none() {
-                    return Err(EmployeeDaoError::DeleteError(format!(
-                        "member_id={} not found",
-                        member_id
-                    )));
-                }
-                Ok(())
-            })
-        }
-
-        fn find_union_member(
-            &self,
-            member_id: MemberId,
-        ) -> impl tx_rs::Tx<(), Item = EmployeeId, Err = EmployeeDaoError> {
-            tx_rs::with_tx(move |_| match self.union_members.borrow().get(&member_id) {
-                Some(&emp_id) => Ok(emp_id),
-                None => Err(EmployeeDaoError::FetchError(format!(
-                    "member_id={} not found",
-                    member_id
-                ))),
-            })
-        }
-
-        fn record_paycheck(
-            &self,
-            emp_id: EmployeeId,
-            pc: PayCheck,
-        ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
-            tx_rs::with_tx(move |_| {
-                self.paychecks.borrow_mut().insert(emp_id, pc);
-                Ok(())
-            })
-        }
-    }
-}
-use mock_db::MockDb;
-
 mod tx_impl {
     use chrono::NaiveDate;
     use tx_rs::Tx;
 
-    use super::Transaction;
     use crate::abstract_tx::EmployeeUsecaseError;
     use crate::affiliation_tx::*;
     use crate::classification_tx::*;
@@ -1425,6 +1275,7 @@ mod tx_impl {
     use crate::method_tx::*;
     use crate::mock_db::MockDb;
     use crate::payroll_domain::{EmployeeId, MemberId};
+    use crate::tx_app::Transaction;
 
     #[derive(Debug, Clone)]
     pub struct AddSalariedEmployeeTransactionImpl {
@@ -1938,154 +1789,32 @@ mod tx_impl {
         }
     }
 }
-use tx_impl::*;
 
-trait TransactionSource<Ctx> {
-    fn get_transactions(&self) -> Vec<Box<dyn Transaction<Ctx>>>;
-}
-trait Transaction<Ctx> {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError>;
-}
+mod tx_app {
+    use crate::abstract_tx::EmployeeUsecaseError;
 
-impl From<(Command, MockDb)> for Box<dyn Transaction<()>> {
-    fn from((command, db): (Command, MockDb)) -> Box<dyn Transaction<()>> {
-        match command {
-            Command::AddSalaryEmp {
-                emp_id,
-                name,
-                address,
-                salary,
-            } => Box::new(AddSalariedEmployeeTransactionImpl {
-                db,
-                emp_id,
-                name,
-                address,
-                salary,
-            }),
-            Command::AddHourlyEmp {
-                emp_id,
-                name,
-                address,
-                hourly_rate,
-            } => Box::new(AddHourlyEmployeeTransactionImpl {
-                db,
-                emp_id,
-                name,
-                address,
-                hourly_rate,
-            }),
-            Command::AddCommissionedEmp {
-                emp_id,
-                name,
-                address,
-                salary,
-                commission_rate,
-            } => Box::new(AddCommissionedEmployeeTransactionImpl {
-                db,
-                emp_id,
-                name,
-                address,
-                salary,
-                commission_rate,
-            }),
-            Command::DelEmp { emp_id } => Box::new(DeleteEmployeeTransactionImpl { db, emp_id }),
-            Command::TimeCard {
-                emp_id,
-                date,
-                hours,
-            } => Box::new(TimeCardTransactionImpl {
-                db,
-                emp_id,
-                date,
-                hours,
-            }),
-            Command::SalesReceipt {
-                emp_id,
-                date,
-                amount,
-            } => Box::new(SalesReceiptTransactionImpl {
-                db,
-                emp_id,
-                date,
-                amount,
-            }),
-            Command::ServiceCharge {
-                member_id,
-                date,
-                amount,
-            } => Box::new(ServiceChargeTransactionImpl {
-                db,
-                member_id,
-                date,
-                amount,
-            }),
-            Command::ChgName { emp_id, name } => {
-                Box::new(ChangeNameTransactionImpl { db, emp_id, name })
+    pub trait TransactionSource<Ctx> {
+        fn get_transactions(&self) -> Vec<Box<dyn Transaction<Ctx>>>;
+    }
+    pub trait Transaction<Ctx> {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError>;
+    }
+    pub trait TransactionApplication<Ctx> {
+        fn tx_source(&self) -> impl TransactionSource<Ctx>;
+        fn run(&mut self) -> Result<(), EmployeeUsecaseError> {
+            for mut tx in self.tx_source().get_transactions() {
+                let _ = tx.execute();
             }
-            Command::ChgAddress { emp_id, address } => Box::new(ChangeAddressTransactionImpl {
-                db,
-                emp_id,
-                address,
-            }),
-            Command::ChgSalaried { emp_id, salary } => {
-                Box::new(ChangeSalaryTransactionImpl { db, emp_id, salary })
-            }
-            Command::ChgHourly {
-                emp_id,
-                hourly_rate,
-            } => Box::new(ChangeHourlyTransactionImpl {
-                db,
-                emp_id,
-                hourly_rate,
-            }),
-            Command::ChgCommissioned {
-                emp_id,
-                salary,
-                commission_rate,
-            } => Box::new(ChangeCommissionedTransactionImpl {
-                db,
-                emp_id,
-                salary,
-                commission_rate,
-            }),
-            Command::ChgHold { emp_id } => Box::new(ChangeHoldTransactionImpl { db, emp_id }),
-            Command::ChgDirect {
-                emp_id,
-                bank,
-                account,
-            } => Box::new(ChangeDirectTransactionImpl {
-                db,
-                emp_id,
-                bank,
-                account,
-            }),
-            Command::ChgMail { emp_id, address } => Box::new(ChangeMailTransactionImpl {
-                db,
-                emp_id,
-                address,
-            }),
-            Command::ChgMember {
-                emp_id,
-                member_id,
-                dues,
-            } => Box::new(ChangeUnionMemberTransactionImpl {
-                db,
-                emp_id,
-                member_id,
-                dues,
-            }),
-            Command::ChgNoMember { emp_id } => {
-                Box::new(ChangeNoMemberTransactionImpl { db, emp_id })
-            }
-            Command::Payday { pay_date } => Box::new(PaydayTransactionImpl { db, pay_date }),
+            Ok(())
         }
     }
 }
 
-// Parser
 pub mod parser {
-    use super::*;
+    use chrono::NaiveDate;
     use parsec_rs::{char, float32, int32, keyword, pred, spaces, string, uint32, Parser};
+
+    use crate::payroll_domain::EmployeeId;
 
     #[derive(Debug, Clone, PartialEq)]
     pub enum Command {
@@ -3141,46 +2870,357 @@ pub mod parser {
         }
     }
 }
-use parser::*;
+
+mod text_parser_tx_source {
+    use parsec_rs::Parser;
+
+    use crate::mock_db::MockDb;
+    use crate::parser::transactions;
+    use crate::parser::Command;
+    use crate::tx_app::{Transaction, TransactionSource};
+    use crate::tx_impl::*;
+
+    pub struct TextParserTransactionSource {
+        db: MockDb,
+        input: String,
+    }
+    impl TransactionSource<()> for TextParserTransactionSource {
+        fn get_transactions(&self) -> Vec<Box<dyn Transaction<()>>> {
+            transactions()
+                .parse(&self.input)
+                .map(|(ts, _)| {
+                    ts.into_iter()
+                        .map(|t| (t, self.db.clone()).into())
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default()
+        }
+    }
+    impl TextParserTransactionSource {
+        pub fn new(db: MockDb, input: String) -> Self {
+            Self { db, input }
+        }
+    }
+
+    impl From<(Command, MockDb)> for Box<dyn Transaction<()>> {
+        fn from((command, db): (Command, MockDb)) -> Box<dyn Transaction<()>> {
+            match command {
+                Command::AddSalaryEmp {
+                    emp_id,
+                    name,
+                    address,
+                    salary,
+                } => Box::new(AddSalariedEmployeeTransactionImpl {
+                    db,
+                    emp_id,
+                    name,
+                    address,
+                    salary,
+                }),
+                Command::AddHourlyEmp {
+                    emp_id,
+                    name,
+                    address,
+                    hourly_rate,
+                } => Box::new(AddHourlyEmployeeTransactionImpl {
+                    db,
+                    emp_id,
+                    name,
+                    address,
+                    hourly_rate,
+                }),
+                Command::AddCommissionedEmp {
+                    emp_id,
+                    name,
+                    address,
+                    salary,
+                    commission_rate,
+                } => Box::new(AddCommissionedEmployeeTransactionImpl {
+                    db,
+                    emp_id,
+                    name,
+                    address,
+                    salary,
+                    commission_rate,
+                }),
+                Command::DelEmp { emp_id } => {
+                    Box::new(DeleteEmployeeTransactionImpl { db, emp_id })
+                }
+                Command::TimeCard {
+                    emp_id,
+                    date,
+                    hours,
+                } => Box::new(TimeCardTransactionImpl {
+                    db,
+                    emp_id,
+                    date,
+                    hours,
+                }),
+                Command::SalesReceipt {
+                    emp_id,
+                    date,
+                    amount,
+                } => Box::new(SalesReceiptTransactionImpl {
+                    db,
+                    emp_id,
+                    date,
+                    amount,
+                }),
+                Command::ServiceCharge {
+                    member_id,
+                    date,
+                    amount,
+                } => Box::new(ServiceChargeTransactionImpl {
+                    db,
+                    member_id,
+                    date,
+                    amount,
+                }),
+                Command::ChgName { emp_id, name } => {
+                    Box::new(ChangeNameTransactionImpl { db, emp_id, name })
+                }
+                Command::ChgAddress { emp_id, address } => Box::new(ChangeAddressTransactionImpl {
+                    db,
+                    emp_id,
+                    address,
+                }),
+                Command::ChgSalaried { emp_id, salary } => {
+                    Box::new(ChangeSalaryTransactionImpl { db, emp_id, salary })
+                }
+                Command::ChgHourly {
+                    emp_id,
+                    hourly_rate,
+                } => Box::new(ChangeHourlyTransactionImpl {
+                    db,
+                    emp_id,
+                    hourly_rate,
+                }),
+                Command::ChgCommissioned {
+                    emp_id,
+                    salary,
+                    commission_rate,
+                } => Box::new(ChangeCommissionedTransactionImpl {
+                    db,
+                    emp_id,
+                    salary,
+                    commission_rate,
+                }),
+                Command::ChgHold { emp_id } => Box::new(ChangeHoldTransactionImpl { db, emp_id }),
+                Command::ChgDirect {
+                    emp_id,
+                    bank,
+                    account,
+                } => Box::new(ChangeDirectTransactionImpl {
+                    db,
+                    emp_id,
+                    bank,
+                    account,
+                }),
+                Command::ChgMail { emp_id, address } => Box::new(ChangeMailTransactionImpl {
+                    db,
+                    emp_id,
+                    address,
+                }),
+                Command::ChgMember {
+                    emp_id,
+                    member_id,
+                    dues,
+                } => Box::new(ChangeUnionMemberTransactionImpl {
+                    db,
+                    emp_id,
+                    member_id,
+                    dues,
+                }),
+                Command::ChgNoMember { emp_id } => {
+                    Box::new(ChangeNoMemberTransactionImpl { db, emp_id })
+                }
+                Command::Payday { pay_date } => Box::new(PaydayTransactionImpl { db, pay_date }),
+            }
+        }
+    }
+}
+
+mod mock_db {
+    use std::{cell::RefCell, collections::HashMap, rc::Rc};
+
+    use crate::dao::{EmployeeDao, EmployeeDaoError};
+    use crate::payroll_domain::{Employee, EmployeeId, MemberId, PayCheck};
+
+    #[derive(Debug, Clone)]
+    pub struct MockDb {
+        employees: Rc<RefCell<HashMap<EmployeeId, Employee>>>,
+        union_members: Rc<RefCell<HashMap<MemberId, EmployeeId>>>,
+        paychecks: Rc<RefCell<HashMap<EmployeeId, PayCheck>>>,
+    }
+    impl MockDb {
+        pub fn new() -> Self {
+            Self {
+                employees: Rc::new(RefCell::new(HashMap::new())),
+                union_members: Rc::new(RefCell::new(HashMap::new())),
+                paychecks: Rc::new(RefCell::new(HashMap::new())),
+            }
+        }
+    }
+    impl EmployeeDao<()> for MockDb {
+        fn insert(
+            &self,
+            emp: Employee,
+        ) -> impl tx_rs::Tx<(), Item = EmployeeId, Err = EmployeeDaoError> {
+            tx_rs::with_tx(move |_| {
+                let emp_id = emp.get_emp_id();
+                if self.employees.borrow().contains_key(&emp_id) {
+                    return Err(EmployeeDaoError::InsertError(format!(
+                        "emp_id={} already exists",
+                        emp_id
+                    )));
+                }
+                self.employees.borrow_mut().insert(emp_id, emp);
+                Ok(emp_id)
+            })
+        }
+        fn delete(
+            &self,
+            emp_id: EmployeeId,
+        ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+            tx_rs::with_tx(move |_| {
+                if self.employees.borrow_mut().remove(&emp_id).is_none() {
+                    return Err(EmployeeDaoError::DeleteError(format!(
+                        "emp_id={} not found",
+                        emp_id
+                    )));
+                }
+                Ok(())
+            })
+        }
+        fn fetch(
+            &self,
+            emp_id: EmployeeId,
+        ) -> impl tx_rs::Tx<(), Item = Employee, Err = EmployeeDaoError> {
+            tx_rs::with_tx(move |_| match self.employees.borrow().get(&emp_id) {
+                Some(emp) => Ok(emp.clone()),
+                None => Err(EmployeeDaoError::FetchError(format!(
+                    "emp_id={} not found",
+                    emp_id
+                ))),
+            })
+        }
+        fn update(&self, emp: Employee) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+            tx_rs::with_tx(move |_| {
+                let emp_id = emp.get_emp_id();
+                if !self.employees.borrow().contains_key(&emp_id) {
+                    return Err(EmployeeDaoError::UpdateError(format!(
+                        "emp_id={} not found",
+                        emp_id
+                    )));
+                }
+                self.employees.borrow_mut().insert(emp_id, emp);
+                Ok(())
+            })
+        }
+        fn get_all(&self) -> impl tx_rs::Tx<(), Item = Vec<Employee>, Err = EmployeeDaoError> {
+            tx_rs::with_tx(move |_| Ok(self.employees.borrow().values().cloned().collect()))
+        }
+
+        fn add_union_member(
+            &self,
+            member_id: MemberId,
+            emp_id: EmployeeId,
+        ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+            tx_rs::with_tx(move |_| {
+                if self.union_members.borrow().contains_key(&member_id) {
+                    return Err(EmployeeDaoError::InsertError(format!(
+                        "member_id={} already exists",
+                        member_id
+                    )));
+                }
+                if self.union_members.borrow().values().any(|&v| v == emp_id) {
+                    return Err(EmployeeDaoError::InsertError(format!(
+                        "emp_id={} already exists",
+                        emp_id
+                    )));
+                }
+                self.union_members.borrow_mut().insert(member_id, emp_id);
+                Ok(())
+            })
+        }
+        fn remove_union_member(
+            &self,
+            member_id: MemberId,
+        ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+            tx_rs::with_tx(move |_| {
+                if self.union_members.borrow_mut().remove(&member_id).is_none() {
+                    return Err(EmployeeDaoError::DeleteError(format!(
+                        "member_id={} not found",
+                        member_id
+                    )));
+                }
+                Ok(())
+            })
+        }
+
+        fn find_union_member(
+            &self,
+            member_id: MemberId,
+        ) -> impl tx_rs::Tx<(), Item = EmployeeId, Err = EmployeeDaoError> {
+            tx_rs::with_tx(move |_| match self.union_members.borrow().get(&member_id) {
+                Some(&emp_id) => Ok(emp_id),
+                None => Err(EmployeeDaoError::FetchError(format!(
+                    "member_id={} not found",
+                    member_id
+                ))),
+            })
+        }
+
+        fn record_paycheck(
+            &self,
+            emp_id: EmployeeId,
+            pc: PayCheck,
+        ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+            tx_rs::with_tx(move |_| {
+                self.paychecks.borrow_mut().insert(emp_id, pc);
+                Ok(())
+            })
+        }
+    }
+}
+
+mod payroll_app {
+    use std::path::PathBuf;
+
+    use crate::mock_db::MockDb;
+    use crate::text_parser_tx_source::TextParserTransactionSource;
+    use crate::tx_app::{TransactionApplication, TransactionSource};
+
+    #[derive(Debug, Clone)]
+    pub struct TestPayrollApp {
+        db: MockDb,
+        file_path: PathBuf,
+    }
+    impl TransactionApplication<()> for TestPayrollApp {
+        fn tx_source(&self) -> impl TransactionSource<()> {
+            let input = std::fs::read_to_string(&self.file_path).expect("read script file");
+
+            TextParserTransactionSource::new(self.db.clone(), input)
+        }
+    }
+    impl TestPayrollApp {
+        pub fn new(file_name: &str) -> Self {
+            Self {
+                db: MockDb::new(),
+                file_path: file_name.into(),
+            }
+        }
+    }
+}
 
 use crate::abstract_tx::EmployeeUsecaseError;
+use crate::payroll_app::TestPayrollApp;
+use crate::tx_app::TransactionApplication;
 
-struct TestPayrollApp {
-    db: MockDb,
-    input: String,
-}
-impl TransactionSource<()> for TestPayrollApp {
-    fn get_transactions(&self) -> Vec<Box<dyn Transaction<()>>> {
-        use parsec_rs::Parser;
+fn main() -> Result<(), EmployeeUsecaseError> {
+    let mut app = TestPayrollApp::new("script/test.scr");
+    app.run()?;
+    println!("{:#?}", app);
 
-        transactions()
-            .parse(&self.input)
-            .map(|(ts, _)| {
-                ts.into_iter()
-                    .map(|t| (t, self.db.clone()).into())
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default()
-    }
-}
-impl TestPayrollApp {
-    pub fn new(file_name: &str) -> Self {
-        let input = std::fs::read_to_string(file_name).expect("read file");
-
-        Self {
-            db: MockDb::new(),
-            input,
-        }
-    }
-    pub fn run(&mut self) {
-        for mut tran in self.get_transactions() {
-            // TODO: handle error
-            let _ = tran.execute();
-            println!("{:#?}", self.db);
-        }
-    }
-}
-
-fn main() {
-    TestPayrollApp::new("script/test.scr").run();
+    Ok(())
 }
