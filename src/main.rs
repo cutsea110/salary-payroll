@@ -1,6 +1,5 @@
 use chrono::NaiveDate;
 use core::fmt::Debug;
-use tx_rs::Tx;
 
 mod payroll_domain {
     use chrono::NaiveDate;
@@ -202,7 +201,6 @@ mod dao {
         fn dao(&self) -> Box<&impl EmployeeDao<Ctx>>;
     }
 }
-use dao::*;
 
 mod payroll_impl {
     pub mod classification {
@@ -960,7 +958,6 @@ mod general_tx {
     // blanket implementation
     impl<Ctx, T> PaydayTransaction<Ctx> for T where T: HaveEmployeeDao<Ctx> + PayableEmployee {}
 }
-use general_tx::*;
 
 mod classification_tx {
     use std::{cell::RefCell, rc::Rc};
@@ -1056,7 +1053,6 @@ mod classification_tx {
     {
     }
 }
-use classification_tx::*;
 
 mod method_tx {
     use std::{cell::RefCell, rc::Rc};
@@ -1142,7 +1138,6 @@ mod method_tx {
     {
     }
 }
-use method_tx::*;
 
 mod affiliation_tx {
     use chrono::NaiveDate;
@@ -1271,7 +1266,6 @@ mod affiliation_tx {
     {
     }
 }
-use affiliation_tx::*;
 
 mod mock_db {
     use std::{cell::RefCell, collections::HashMap, rc::Rc};
@@ -1418,517 +1412,533 @@ mod mock_db {
 }
 use mock_db::MockDb;
 
-#[derive(Debug, Clone)]
-struct AddSalariedEmployeeTransactionImpl {
-    db: MockDb,
+mod tx_impl {
+    use chrono::NaiveDate;
+    use tx_rs::Tx;
 
-    emp_id: EmployeeId,
-    name: String,
-    address: String,
-    salary: f32,
-}
-impl HaveEmployeeDao<()> for AddSalariedEmployeeTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
-    }
-}
-impl SalaryEmployee for AddSalariedEmployeeTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
-    }
-    fn get_name(&self) -> &str {
-        &self.name
-    }
-    fn get_address(&self) -> &str {
-        &self.address
-    }
-    fn get_salary(&self) -> f32 {
-        self.salary
-    }
-}
-impl Transaction<()> for AddSalariedEmployeeTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        AddSalaryEmployeeTransaction::execute(self)
-            .run(&mut ())
-            .map(|_| ())
-    }
-}
+    use super::Transaction;
+    use crate::abstract_tx::EmployeeUsecaseError;
+    use crate::affiliation_tx::*;
+    use crate::classification_tx::*;
+    use crate::dao::{EmployeeDao, HaveEmployeeDao};
+    use crate::general_tx::*;
+    use crate::method_tx::*;
+    use crate::mock_db::MockDb;
+    use crate::payroll_domain::{EmployeeId, MemberId};
 
-#[derive(Debug, Clone)]
-struct AddHourlyEmployeeTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct AddSalariedEmployeeTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    name: String,
-    address: String,
-    hourly_rate: f32,
-}
-impl HaveEmployeeDao<()> for AddHourlyEmployeeTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub name: String,
+        pub address: String,
+        pub salary: f32,
     }
-}
-impl HourlyEmployee for AddHourlyEmployeeTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for AddSalariedEmployeeTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_name(&self) -> &str {
-        &self.name
+    impl SalaryEmployee for AddSalariedEmployeeTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_name(&self) -> &str {
+            &self.name
+        }
+        fn get_address(&self) -> &str {
+            &self.address
+        }
+        fn get_salary(&self) -> f32 {
+            self.salary
+        }
     }
-    fn get_address(&self) -> &str {
-        &self.address
+    impl Transaction<()> for AddSalariedEmployeeTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            AddSalaryEmployeeTransaction::execute(self)
+                .run(&mut ())
+                .map(|_| ())
+        }
     }
-    fn get_hourly_rate(&self) -> f32 {
-        self.hourly_rate
-    }
-}
-impl Transaction<()> for AddHourlyEmployeeTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        AddHourlyEmployeeTransaction::execute(self)
-            .run(&mut ())
-            .map(|_| ())
-    }
-}
 
-#[derive(Debug, Clone)]
-struct AddCommissionedEmployeeTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct AddHourlyEmployeeTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    name: String,
-    address: String,
-    salary: f32,
-    commission_rate: f32,
-}
-impl HaveEmployeeDao<()> for AddCommissionedEmployeeTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub name: String,
+        pub address: String,
+        pub hourly_rate: f32,
     }
-}
-impl CommissionedEmployee for AddCommissionedEmployeeTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for AddHourlyEmployeeTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_name(&self) -> &str {
-        &self.name
+    impl HourlyEmployee for AddHourlyEmployeeTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_name(&self) -> &str {
+            &self.name
+        }
+        fn get_address(&self) -> &str {
+            &self.address
+        }
+        fn get_hourly_rate(&self) -> f32 {
+            self.hourly_rate
+        }
     }
-    fn get_address(&self) -> &str {
-        &self.address
+    impl Transaction<()> for AddHourlyEmployeeTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            AddHourlyEmployeeTransaction::execute(self)
+                .run(&mut ())
+                .map(|_| ())
+        }
     }
-    fn get_salary(&self) -> f32 {
-        self.salary
-    }
-    fn get_commission_rate(&self) -> f32 {
-        self.commission_rate
-    }
-}
-impl Transaction<()> for AddCommissionedEmployeeTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        AddCommissionedEmployeeTransaction::execute(self)
-            .run(&mut ())
-            .map(|_| ())
-    }
-}
 
-#[derive(Debug, Clone)]
-struct DeleteEmployeeTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct AddCommissionedEmployeeTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-}
-impl HaveEmployeeDao<()> for DeleteEmployeeTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub name: String,
+        pub address: String,
+        pub salary: f32,
+        pub commission_rate: f32,
     }
-}
-impl DeletableEmployee for DeleteEmployeeTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for AddCommissionedEmployeeTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-}
-impl Transaction<()> for DeleteEmployeeTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        DeleteEmployeeTransaction::execute(self)
-            .run(&mut ())
-            .map(|_| ())
+    impl CommissionedEmployee for AddCommissionedEmployeeTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_name(&self) -> &str {
+            &self.name
+        }
+        fn get_address(&self) -> &str {
+            &self.address
+        }
+        fn get_salary(&self) -> f32 {
+            self.salary
+        }
+        fn get_commission_rate(&self) -> f32 {
+            self.commission_rate
+        }
     }
-}
+    impl Transaction<()> for AddCommissionedEmployeeTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            AddCommissionedEmployeeTransaction::execute(self)
+                .run(&mut ())
+                .map(|_| ())
+        }
+    }
 
-#[derive(Debug, Clone)]
-struct TimeCardTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct DeleteEmployeeTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    date: NaiveDate,
-    hours: f32,
-}
-impl HaveEmployeeDao<()> for TimeCardTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
     }
-}
-impl TimeCardEmployee for TimeCardTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for DeleteEmployeeTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_date(&self) -> NaiveDate {
-        self.date
+    impl DeletableEmployee for DeleteEmployeeTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
     }
-    fn get_hours(&self) -> f32 {
-        self.hours
+    impl Transaction<()> for DeleteEmployeeTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            DeleteEmployeeTransaction::execute(self)
+                .run(&mut ())
+                .map(|_| ())
+        }
     }
-}
-impl Transaction<()> for TimeCardTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        TimeCardTransaction::execute(self).run(&mut ())
-    }
-}
 
-#[derive(Debug, Clone)]
-struct SalesReceiptTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct TimeCardTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    date: NaiveDate,
-    amount: f32,
-}
-impl HaveEmployeeDao<()> for SalesReceiptTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub date: NaiveDate,
+        pub hours: f32,
     }
-}
-impl SalesReceiptEmployee for SalesReceiptTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for TimeCardTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_date(&self) -> NaiveDate {
-        self.date
+    impl TimeCardEmployee for TimeCardTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_date(&self) -> NaiveDate {
+            self.date
+        }
+        fn get_hours(&self) -> f32 {
+            self.hours
+        }
     }
-    fn get_amount(&self) -> f32 {
-        self.amount
+    impl Transaction<()> for TimeCardTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            TimeCardTransaction::execute(self).run(&mut ())
+        }
     }
-}
-impl Transaction<()> for SalesReceiptTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        SalesReceiptTransaction::execute(self).run(&mut ())
-    }
-}
 
-#[derive(Debug, Clone)]
-struct ServiceChargeTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct SalesReceiptTransactionImpl {
+        pub db: MockDb,
 
-    member_id: MemberId,
-    date: NaiveDate,
-    amount: f32,
-}
-impl HaveEmployeeDao<()> for ServiceChargeTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub date: NaiveDate,
+        pub amount: f32,
     }
-}
-impl ServiceChargeableMember for ServiceChargeTransactionImpl {
-    fn get_member_id(&self) -> MemberId {
-        self.member_id
+    impl HaveEmployeeDao<()> for SalesReceiptTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_date(&self) -> NaiveDate {
-        self.date
+    impl SalesReceiptEmployee for SalesReceiptTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_date(&self) -> NaiveDate {
+            self.date
+        }
+        fn get_amount(&self) -> f32 {
+            self.amount
+        }
     }
-    fn get_amount(&self) -> f32 {
-        self.amount
+    impl Transaction<()> for SalesReceiptTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            SalesReceiptTransaction::execute(self).run(&mut ())
+        }
     }
-}
-impl Transaction<()> for ServiceChargeTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        ServiceChargeTransaction::execute(self).run(&mut ())
-    }
-}
 
-#[derive(Debug, Clone)]
-struct ChangeNameTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct ServiceChargeTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    name: String,
-}
-impl HaveEmployeeDao<()> for ChangeNameTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub member_id: MemberId,
+        pub date: NaiveDate,
+        pub amount: f32,
     }
-}
-impl NameChangeableEmployee for ChangeNameTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for ServiceChargeTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_name(&self) -> &str {
-        &self.name
+    impl ServiceChargeableMember for ServiceChargeTransactionImpl {
+        fn get_member_id(&self) -> MemberId {
+            self.member_id
+        }
+        fn get_date(&self) -> NaiveDate {
+            self.date
+        }
+        fn get_amount(&self) -> f32 {
+            self.amount
+        }
     }
-}
-impl Transaction<()> for ChangeNameTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        ChangeNameTransaction::execute(self).run(&mut ())
+    impl Transaction<()> for ServiceChargeTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            ServiceChargeTransaction::execute(self).run(&mut ())
+        }
     }
-}
 
-#[derive(Debug, Clone)]
-struct ChangeAddressTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct ChangeNameTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    address: String,
-}
-impl HaveEmployeeDao<()> for ChangeAddressTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub name: String,
     }
-}
-impl AddressChangeableEmployee for ChangeAddressTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for ChangeNameTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_address(&self) -> &str {
-        &self.address
+    impl NameChangeableEmployee for ChangeNameTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_name(&self) -> &str {
+            &self.name
+        }
     }
-}
-impl Transaction<()> for ChangeAddressTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        ChangeAddressTransaction::execute(self).run(&mut ())
+    impl Transaction<()> for ChangeNameTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            ChangeNameTransaction::execute(self).run(&mut ())
+        }
     }
-}
 
-#[derive(Debug, Clone)]
-struct ChangeSalaryTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct ChangeAddressTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    salary: f32,
-}
-impl HaveEmployeeDao<()> for ChangeSalaryTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub address: String,
     }
-}
-impl SalaryChangeableEmployee for ChangeSalaryTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for ChangeAddressTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_salary(&self) -> f32 {
-        self.salary
+    impl AddressChangeableEmployee for ChangeAddressTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_address(&self) -> &str {
+            &self.address
+        }
     }
-}
-impl Transaction<()> for ChangeSalaryTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        ChangeSalariedTransaction::execute(self).run(&mut ())
+    impl Transaction<()> for ChangeAddressTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            ChangeAddressTransaction::execute(self).run(&mut ())
+        }
     }
-}
 
-#[derive(Debug, Clone)]
-struct ChangeHourlyTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct ChangeSalaryTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    hourly_rate: f32,
-}
-impl HaveEmployeeDao<()> for ChangeHourlyTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub salary: f32,
     }
-}
-impl HourlyChangeableEmployee for ChangeHourlyTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for ChangeSalaryTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_hourly_rate(&self) -> f32 {
-        self.hourly_rate
+    impl SalaryChangeableEmployee for ChangeSalaryTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_salary(&self) -> f32 {
+            self.salary
+        }
     }
-}
-impl Transaction<()> for ChangeHourlyTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        ChangeHourlyTransaction::execute(self).run(&mut ())
+    impl Transaction<()> for ChangeSalaryTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            ChangeSalariedTransaction::execute(self).run(&mut ())
+        }
     }
-}
 
-#[derive(Debug, Clone)]
-struct ChangeCommissionedTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct ChangeHourlyTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    salary: f32,
-    commission_rate: f32,
-}
-impl HaveEmployeeDao<()> for ChangeCommissionedTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub hourly_rate: f32,
     }
-}
-impl CommissionedChangeableEmployee for ChangeCommissionedTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for ChangeHourlyTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_salary(&self) -> f32 {
-        self.salary
+    impl HourlyChangeableEmployee for ChangeHourlyTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_hourly_rate(&self) -> f32 {
+            self.hourly_rate
+        }
     }
-    fn get_commission_rate(&self) -> f32 {
-        self.commission_rate
+    impl Transaction<()> for ChangeHourlyTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            ChangeHourlyTransaction::execute(self).run(&mut ())
+        }
     }
-}
-impl Transaction<()> for ChangeCommissionedTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        ChangeCommissionedTransaction::execute(self).run(&mut ())
-    }
-}
 
-#[derive(Debug, Clone)]
-struct ChangeDirectTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct ChangeCommissionedTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    bank: String,
-    account: String,
-}
-impl HaveEmployeeDao<()> for ChangeDirectTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub salary: f32,
+        pub commission_rate: f32,
     }
-}
-impl DirectChangeableEmployee for ChangeDirectTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for ChangeCommissionedTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_bank(&self) -> &str {
-        &self.bank
+    impl CommissionedChangeableEmployee for ChangeCommissionedTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_salary(&self) -> f32 {
+            self.salary
+        }
+        fn get_commission_rate(&self) -> f32 {
+            self.commission_rate
+        }
     }
-    fn get_account(&self) -> &str {
-        &self.account
+    impl Transaction<()> for ChangeCommissionedTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            ChangeCommissionedTransaction::execute(self).run(&mut ())
+        }
     }
-}
-impl Transaction<()> for ChangeDirectTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        ChangeDirectTransaction::execute(self).run(&mut ())
-    }
-}
 
-#[derive(Debug, Clone)]
-struct ChangeMailTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct ChangeDirectTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    address: String,
-}
-impl HaveEmployeeDao<()> for ChangeMailTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub bank: String,
+        pub account: String,
     }
-}
-impl MailChangeableEmployee for ChangeMailTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for ChangeDirectTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_address(&self) -> &str {
-        &self.address
+    impl DirectChangeableEmployee for ChangeDirectTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_bank(&self) -> &str {
+            &self.bank
+        }
+        fn get_account(&self) -> &str {
+            &self.account
+        }
     }
-}
-impl Transaction<()> for ChangeMailTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        ChangeMailTransaction::execute(self).run(&mut ())
+    impl Transaction<()> for ChangeDirectTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            ChangeDirectTransaction::execute(self).run(&mut ())
+        }
     }
-}
 
-#[derive(Debug, Clone)]
-struct ChangeHoldTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct ChangeMailTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-}
-impl HaveEmployeeDao<()> for ChangeHoldTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub address: String,
     }
-}
-impl HoldChangeableEmployee for ChangeHoldTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for ChangeMailTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-}
-impl Transaction<()> for ChangeHoldTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        ChangeHoldTransaction::execute(self).run(&mut ())
+    impl MailChangeableEmployee for ChangeMailTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_address(&self) -> &str {
+            &self.address
+        }
     }
-}
+    impl Transaction<()> for ChangeMailTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            ChangeMailTransaction::execute(self).run(&mut ())
+        }
+    }
 
-#[derive(Debug, Clone)]
-struct ChangeUnionMemberTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct ChangeHoldTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-    member_id: EmployeeId,
-    dues: f32,
-}
-impl HaveEmployeeDao<()> for ChangeUnionMemberTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
     }
-}
-impl UnionChangeableEmployee for ChangeUnionMemberTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for ChangeHoldTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-    fn get_member_id(&self) -> MemberId {
-        self.member_id
+    impl HoldChangeableEmployee for ChangeHoldTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
     }
-    fn get_dues(&self) -> f32 {
-        self.dues
+    impl Transaction<()> for ChangeHoldTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            ChangeHoldTransaction::execute(self).run(&mut ())
+        }
     }
-}
-impl Transaction<()> for ChangeUnionMemberTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        ChangeUnionMemberTransaction::execute(self).run(&mut ())
-    }
-}
 
-#[derive(Debug, Clone)]
-struct ChangeNoMemberTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct ChangeUnionMemberTransactionImpl {
+        pub db: MockDb,
 
-    emp_id: EmployeeId,
-}
-impl HaveEmployeeDao<()> for ChangeNoMemberTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+        pub member_id: EmployeeId,
+        pub dues: f32,
     }
-}
-impl NoAffiliationChangeableEmployee for ChangeNoMemberTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
+    impl HaveEmployeeDao<()> for ChangeUnionMemberTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
     }
-}
-impl Transaction<()> for ChangeNoMemberTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        ChangeUnaffiliatedTransaction::execute(self).run(&mut ())
+    impl UnionChangeableEmployee for ChangeUnionMemberTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+        fn get_member_id(&self) -> MemberId {
+            self.member_id
+        }
+        fn get_dues(&self) -> f32 {
+            self.dues
+        }
     }
-}
+    impl Transaction<()> for ChangeUnionMemberTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            ChangeUnionMemberTransaction::execute(self).run(&mut ())
+        }
+    }
 
-#[derive(Debug, Clone)]
-struct PaydayTransactionImpl {
-    db: MockDb,
+    #[derive(Debug, Clone)]
+    pub struct ChangeNoMemberTransactionImpl {
+        pub db: MockDb,
 
-    pay_date: NaiveDate,
-}
-impl HaveEmployeeDao<()> for PaydayTransactionImpl {
-    fn dao(&self) -> Box<&impl EmployeeDao<()>> {
-        Box::new(&self.db)
+        pub emp_id: EmployeeId,
+    }
+    impl HaveEmployeeDao<()> for ChangeNoMemberTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
+    }
+    impl NoAffiliationChangeableEmployee for ChangeNoMemberTransactionImpl {
+        fn get_emp_id(&self) -> EmployeeId {
+            self.emp_id
+        }
+    }
+    impl Transaction<()> for ChangeNoMemberTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            ChangeUnaffiliatedTransaction::execute(self).run(&mut ())
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct PaydayTransactionImpl {
+        pub db: MockDb,
+
+        pub pay_date: NaiveDate,
+    }
+    impl HaveEmployeeDao<()> for PaydayTransactionImpl {
+        fn dao(&self) -> Box<&impl EmployeeDao<()>> {
+            Box::new(&self.db)
+        }
+    }
+    impl PayableEmployee for PaydayTransactionImpl {
+        fn get_pay_date(&self) -> NaiveDate {
+            self.pay_date
+        }
+    }
+    impl Transaction<()> for PaydayTransactionImpl {
+        fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+            PaydayTransaction::execute(self).run(&mut ())
+        }
     }
 }
-impl PayableEmployee for PaydayTransactionImpl {
-    fn get_pay_date(&self) -> NaiveDate {
-        self.pay_date
-    }
-}
-impl Transaction<()> for PaydayTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
-        PaydayTransaction::execute(self).run(&mut ())
-    }
-}
+use tx_impl::*;
 
 trait TransactionSource<Ctx> {
     fn get_transactions(&self) -> Vec<Box<dyn Transaction<Ctx>>>;
