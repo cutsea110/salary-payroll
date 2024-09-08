@@ -383,7 +383,7 @@ mod payroll_impl {
         impl PaymentMethod for HoldMethod {
             fn pay(&self, pc: &PayCheck) {
                 // concrete implementation
-                println!("HoldMethod: {:?}", pc);
+                println!("HoldMethod: {:#?}", pc);
             }
         }
         #[derive(Debug, Clone, Eq, PartialEq)]
@@ -393,7 +393,7 @@ mod payroll_impl {
         impl PaymentMethod for MailMethod {
             fn pay(&self, pc: &PayCheck) {
                 // concrete implementation
-                println!("MailMethod for {}: {:?}", self.address, pc);
+                println!("MailMethod for {}: {:#?}", self.address, pc);
             }
         }
         impl MailMethod {
@@ -409,7 +409,7 @@ mod payroll_impl {
         impl PaymentMethod for DirectMethod {
             fn pay(&self, pc: &PayCheck) {
                 // concrete implementation
-                println!("DirectMethod to {}{}: {:?}", self.bank, self.account, pc);
+                println!("DirectMethod to {}{}: {:#?}", self.bank, self.account, pc);
             }
         }
         impl DirectMethod {
