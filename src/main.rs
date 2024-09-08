@@ -3050,7 +3050,7 @@ mod mock_db {
     pub struct MockDb {
         employees: Rc<RefCell<HashMap<EmployeeId, Employee>>>,
         union_members: Rc<RefCell<HashMap<MemberId, EmployeeId>>>,
-        paychecks: Rc<RefCell<HashMap<EmployeeId, PayCheck>>>,
+        paychecks: Rc<RefCell<HashMap<EmployeeId, Vec<PayCheck>>>>,
     }
     impl MockDb {
         pub fn new() -> Self {
@@ -3177,7 +3177,11 @@ mod mock_db {
             pc: PayCheck,
         ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
             tx_rs::with_tx(move |_| {
-                self.paychecks.borrow_mut().insert(emp_id, pc);
+                self.paychecks
+                    .borrow_mut()
+                    .entry(emp_id)
+                    .or_insert(vec![])
+                    .push(pc);
                 Ok(())
             })
         }
