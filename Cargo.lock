@@ -180,12 +180,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "mock-app"
+version = "0.1.0"
+dependencies = [
+ "mock-db",
+ "text-parser-tx-source",
+ "tx-app",
+]
+
+[[package]]
 name = "mock-db"
 version = "0.1.0"
 dependencies = [
  "dao",
  "payroll-domain",
  "tx-rs",
+]
+
+[[package]]
+name = "mock-main"
+version = "0.1.0"
+dependencies = [
+ "abstract-tx",
+ "mock-app",
+ "tx-app",
 ]
 
 [[package]]
@@ -218,15 +236,6 @@ dependencies = [
  "chrono",
  "parsec-rs",
  "payroll-domain",
-]
-
-[[package]]
-name = "payroll-app"
-version = "0.1.0"
-dependencies = [
- "mock-db",
- "text-parser-tx-source",
- "tx-app",
 ]
 
 [[package]]
@@ -298,15 +307,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "test-payroll-app"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "payroll-app",
- "tx-app",
 ]
 
 [[package]]

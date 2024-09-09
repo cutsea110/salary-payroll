@@ -1,5 +1,5 @@
 use abstract_tx::EmployeeUsecaseError;
-use payroll_app::TestPayrollApp;
+use mock_app::TestPayrollApp;
 use tx_app::TransactionApplication;
 
 fn main() -> Result<(), EmployeeUsecaseError> {

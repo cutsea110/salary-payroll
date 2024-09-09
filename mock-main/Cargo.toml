@@ -1,5 +1,5 @@
 [package]
-name = "payroll-app"
+name = "mock-main"
 version.workspace = true
 authors.workspace = true
 description.workspace = true
@@ -7,6 +7,6 @@ documentation.workspace = true
 edition.workspace = true
 
 [dependencies]
-mock-db = { path = "../mock-db" }
-text-parser-tx-source = { path = "../text-parser-tx-source" }
+abstract-tx = { path = "../abstract-tx" }
+mock-app = { path = "../mock-app" }
 tx-app = { path = "../tx-app" }
