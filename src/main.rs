@@ -1794,7 +1794,7 @@ mod tx_app {
     use crate::abstract_tx::EmployeeUsecaseError;
 
     pub trait TransactionSource<Ctx> {
-        fn get_transactions(&self) -> Vec<Box<dyn Transaction<Ctx>>>;
+        fn get_transaction(&mut self) -> Option<Box<dyn Transaction<Ctx>>>;
     }
     pub trait Transaction<Ctx> {
         fn execute(&mut self) -> Result<(), EmployeeUsecaseError>;
@@ -1802,7 +1802,8 @@ mod tx_app {
     pub trait TransactionApplication<Ctx> {
         fn tx_source(&self) -> impl TransactionSource<Ctx>;
         fn run(&mut self) -> Result<(), EmployeeUsecaseError> {
-            for mut tx in self.tx_source().get_transactions() {
+            let mut tx_source = self.tx_source();
+            while let Some(mut tx) = tx_source.get_transaction() {
                 let _ = tx.execute();
             }
             Ok(())
@@ -2873,6 +2874,7 @@ pub mod parser {
 
 mod text_parser_tx_source {
     use parsec_rs::Parser;
+    use std::collections::VecDeque;
 
     use crate::mock_db::MockDb;
     use crate::parser::transactions;
@@ -2881,24 +2883,25 @@ mod text_parser_tx_source {
     use crate::tx_impl::*;
 
     pub struct TextParserTransactionSource {
-        db: MockDb,
-        input: String,
+        txs: VecDeque<Box<dyn Transaction<()>>>,
     }
     impl TransactionSource<()> for TextParserTransactionSource {
-        fn get_transactions(&self) -> Vec<Box<dyn Transaction<()>>> {
-            transactions()
-                .parse(&self.input)
-                .map(|(ts, _)| {
-                    ts.into_iter()
-                        .map(|t| (t, self.db.clone()).into())
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default()
+        fn get_transaction(&mut self) -> Option<Box<dyn Transaction<()>>> {
+            self.txs.pop_front()
         }
     }
     impl TextParserTransactionSource {
         pub fn new(db: MockDb, input: String) -> Self {
-            Self { db, input }
+            let txs = transactions()
+                .parse(&input)
+                .map(|(ts, _)| {
+                    ts.into_iter()
+                        .map(|t| (t, db.clone()).into())
+                        .collect::<VecDeque<_>>()
+                })
+                .unwrap_or_default();
+
+            Self { txs }
         }
     }
 
