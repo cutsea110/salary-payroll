@@ -7,8 +7,8 @@ documentation.workspace = true
 edition.workspace = true
 
 [dependencies]
-chrono = { version = "0.4.38", features = ["serde"] }
-tx-rs = { git = "https://github.com/cutsea110/fragments.git", branch = "main" }
+chrono.workspace = true
+tx-rs.workspace = true
 
 abstract-tx = { path = "../abstract-tx" }
 dao = { path = "../dao" }

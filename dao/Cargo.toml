@@ -7,7 +7,7 @@ documentation.workspace = true
 edition.workspace = true
 
 [dependencies]
-thiserror = "1.0.63"
-tx-rs = { git = "https://github.com/cutsea110/fragments.git", branch = "main" }
+thiserror.workspace = true
+tx-rs.workspace = true
 
 payroll-domain = { path = "../payroll-domain" }
