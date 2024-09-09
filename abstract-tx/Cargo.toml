@@ -1,0 +1,16 @@
+[package]
+name = "abstract-tx"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+thiserror = "1.0.63"
+tx-rs = { git = "https://github.com/cutsea110/fragments.git", branch = "main" }
+
+dao = { path = "../dao" }
+payroll-domain = { path = "../payroll-domain" }
+payroll-impl = { path = "../payroll-impl" }
+

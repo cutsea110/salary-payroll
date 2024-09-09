@@ -1,0 +1,15 @@
+[package]
+name = "text-parser-tx-source"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+parsec-rs = { git = "https://github.com/cutsea110/fragments.git", branch = "main" }
+
+mock-db = { path = "../mock-db" }
+parser = { path = "../parser" }
+tx-app = { path = "../tx-app" }
+tx-impl = { path = "../tx-impl" }

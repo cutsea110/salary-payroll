@@ -3,29 +3,6 @@
 version = 3
 
 [[package]]
-name = "abstract-tx"
-version = "0.1.0"
-dependencies = [
- "dao",
- "payroll-domain",
- "payroll-impl",
- "thiserror",
- "tx-rs",
-]
-
-[[package]]
-name = "affiliation-tx"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "chrono",
- "dao",
- "payroll-domain",
- "payroll-impl",
- "tx-rs",
-]
-
-[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -83,47 +60,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "classification-tx"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "payroll-domain",
- "payroll-impl",
- "tx-rs",
-]
-
-[[package]]
 name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
-name = "dao"
-version = "0.1.0"
-dependencies = [
- "payroll-domain",
- "thiserror",
- "tx-rs",
-]
-
-[[package]]
 name = "dyn-clone"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
-
-[[package]]
-name = "general-tx"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "chrono",
- "dao",
- "payroll-domain",
- "payroll-impl",
- "tx-rs",
-]
 
 [[package]]
 name = "iana-time-zone"
@@ -170,25 +116,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
-name = "method-tx"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "payroll-domain",
- "payroll-impl",
- "tx-rs",
-]
-
-[[package]]
-name = "mock-db"
-version = "0.1.0"
-dependencies = [
- "dao",
- "payroll-domain",
- "tx-rs",
-]
-
-[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -204,45 +131,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
-name = "parsec-rs"
-version = "0.1.0"
-source = "git+https://github.com/cutsea110/fragments.git?branch=main#e3c6634f9d7c521eb34df0a913dbc356ba2c8246"
-dependencies = [
- "thiserror",
-]
-
-[[package]]
-name = "parser"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "parsec-rs",
- "payroll-domain",
-]
-
-[[package]]
-name = "payroll-app"
-version = "0.1.0"
-dependencies = [
- "mock-db",
- "text-parser-tx-source",
- "tx-app",
-]
-
-[[package]]
 name = "payroll-domain"
 version = "0.1.0"
 dependencies = [
  "chrono",
  "dyn-clone",
-]
-
-[[package]]
-name = "payroll-impl"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "payroll-domain",
 ]
 
 [[package]]
@@ -299,75 +192,6 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
-
-[[package]]
-name = "test-payroll-app"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "payroll-app",
- "tx-app",
-]
-
-[[package]]
-name = "text-parser-tx-source"
-version = "0.1.0"
-dependencies = [
- "mock-db",
- "parsec-rs",
- "parser",
- "tx-app",
- "tx-impl",
-]
-
-[[package]]
-name = "thiserror"
-version = "1.0.63"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0342370b38b6a11b6cc11d6a805569958d54cfa061a29969c3b5ce2ea405724"
-dependencies = [
- "thiserror-impl",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "1.0.63"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4558b58466b9ad7ca0f102865eccc95938dca1a74a856f2b57b6629050da261"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "tx-app"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
-]
-
-[[package]]
-name = "tx-impl"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "affiliation-tx",
- "chrono",
- "classification-tx",
- "dao",
- "general-tx",
- "method-tx",
- "mock-db",
- "payroll-domain",
- "tx-app",
- "tx-rs",
-]
-
-[[package]]
-name = "tx-rs"
-version = "0.1.0"
-source = "git+https://github.com/cutsea110/fragments.git?branch=main#e3c6634f9d7c521eb34df0a913dbc356ba2c8246"
 
 [[package]]
 name = "unicode-ident"

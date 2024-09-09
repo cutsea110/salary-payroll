@@ -1,0 +1,13 @@
+[package]
+name = "mock-db"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+tx-rs = { git = "https://github.com/cutsea110/fragments.git", branch = "main" }
+
+dao = { path = "../dao" }
+payroll-domain = { path = "../payroll-domain" }

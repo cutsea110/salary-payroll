@@ -1,0 +1,16 @@
+[package]
+name = "affiliation-tx"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+chrono = { version = "0.4.38", features = ["serde"] }
+tx-rs = { git = "https://github.com/cutsea110/fragments.git", branch = "main" }
+
+abstract-tx = { path = "../abstract-tx" }
+dao = { path = "../dao" }
+payroll-domain = { path = "../payroll-domain" }
+payroll-impl = { path = "../payroll-impl" }

@@ -1,0 +1,21 @@
+[package]
+name = "tx-impl"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+
+[dependencies]
+chrono = { version = "0.4.38", features = ["serde"] }
+tx-rs = { git = "https://github.com/cutsea110/fragments.git", branch = "main" }
+
+abstract-tx = { path = "../abstract-tx" }
+affiliation-tx = { path = "../affiliation-tx" }
+classification-tx = { path = "../classification-tx" }
+dao = { path = "../dao" }
+general-tx = { path = "../general-tx" }
+method-tx = { path = "../method-tx" }
+mock-db = { path = "../mock-db" }
+payroll-domain = { path = "../payroll-domain" }
+tx-app = { path = "../tx-app" }
