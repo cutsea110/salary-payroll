@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use std::any::Any;
 
-use payroll_domain::{PayCheck, PaymentClassification};
+use payroll_domain::{Paycheck, PaymentClassification};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SalariedClassification {
@@ -11,7 +11,7 @@ impl PaymentClassification for SalariedClassification {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-    fn calculate_pay(&self, _pc: &PayCheck) -> f32 {
+    fn calculate_pay(&self, _pc: &Paycheck) -> f32 {
         self.salary
     }
 }
@@ -29,7 +29,7 @@ impl PaymentClassification for HourlyClassification {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-    fn calculate_pay(&self, pc: &PayCheck) -> f32 {
+    fn calculate_pay(&self, pc: &Paycheck) -> f32 {
         let pay_period = pc.get_pay_period();
         let mut total_pay = 0.0;
         for tc in self.timecards.iter() {
@@ -67,7 +67,7 @@ impl PaymentClassification for CommissionedClassification {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-    fn calculate_pay(&self, pc: &PayCheck) -> f32 {
+    fn calculate_pay(&self, pc: &Paycheck) -> f32 {
         let mut total_pay = self.salary;
         let pay_period = pc.get_pay_period();
         for sr in self.sales_receipts.iter() {

@@ -1,13 +1,13 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use dao::{EmployeeDao, EmployeeDaoError};
-use payroll_domain::{Employee, EmployeeId, MemberId, PayCheck};
+use payroll_domain::{Employee, EmployeeId, MemberId, Paycheck};
 
 #[derive(Debug, Clone)]
 pub struct MockDb {
     employees: Rc<RefCell<HashMap<EmployeeId, Employee>>>,
     union_members: Rc<RefCell<HashMap<MemberId, EmployeeId>>>,
-    paychecks: Rc<RefCell<HashMap<EmployeeId, Vec<PayCheck>>>>,
+    paychecks: Rc<RefCell<HashMap<EmployeeId, Vec<Paycheck>>>>,
 }
 impl MockDb {
     pub fn new() -> Self {
@@ -128,7 +128,7 @@ impl EmployeeDao<()> for MockDb {
     fn record_paycheck(
         &self,
         emp_id: EmployeeId,
-        pc: PayCheck,
+        pc: Paycheck,
     ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
         tx_rs::with_tx(move |_| {
             self.paychecks

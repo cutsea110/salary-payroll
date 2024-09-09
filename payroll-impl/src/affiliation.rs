@@ -1,7 +1,7 @@
 use chrono::{Datelike, NaiveDate, Weekday};
 use std::any::Any;
 
-use payroll_domain::{Affiliation, MemberId, PayCheck};
+use payroll_domain::{Affiliation, MemberId, Paycheck};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnionAffiliation {
@@ -35,7 +35,7 @@ impl Affiliation for UnionAffiliation {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-    fn calculate_deductions(&self, pc: &PayCheck) -> f32 {
+    fn calculate_deductions(&self, pc: &Paycheck) -> f32 {
         let mut total_deductions = 0.0;
         let pay_period = pc.get_pay_period();
         for d in pc.get_pay_period().start().iter_days() {

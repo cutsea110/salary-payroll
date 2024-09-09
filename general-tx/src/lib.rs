@@ -4,7 +4,7 @@ use tx_rs::Tx;
 
 use abstract_tx::{AddEmployeeTransaction, ChangeEmployeeTransaction, EmployeeUsecaseError};
 use dao::{EmployeeDao, HaveEmployeeDao};
-use payroll_domain::{EmployeeId, PayCheck};
+use payroll_domain::{EmployeeId, Paycheck};
 use payroll_impl::{
     classification::{
         CommissionedClassification, HourlyClassification, SalariedClassification, SalesReceipt,
@@ -264,7 +264,7 @@ pub trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> + PayableEmployee {
             for emp in employees.iter_mut() {
                 if emp.is_pay_date(pay_date) {
                     let period = emp.get_pay_period(pay_date);
-                    let mut pc = PayCheck::new(period);
+                    let mut pc = Paycheck::new(period);
                     emp.payday(&mut pc);
                     self.dao()
                         .record_paycheck(emp.get_emp_id(), pc)

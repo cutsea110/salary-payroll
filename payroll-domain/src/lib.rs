@@ -42,7 +42,7 @@ impl Employee {
     pub fn get_pay_period(&self, date: NaiveDate) -> RangeInclusive<NaiveDate> {
         self.schedule.borrow().get_pay_period(date)
     }
-    pub fn payday(&self, pc: &mut PayCheck) {
+    pub fn payday(&self, pc: &mut Paycheck) {
         let gross_pay = self.classification.borrow().calculate_pay(&pc);
         let deductions = self.affiliation.borrow().calculate_deductions(&pc);
         let net_pay = gross_pay - deductions;
@@ -82,7 +82,7 @@ impl Employee {
 
 pub trait PaymentClassification: DynClone + Debug {
     fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn calculate_pay(&self, pc: &PayCheck) -> f32;
+    fn calculate_pay(&self, pc: &Paycheck) -> f32;
 }
 dyn_clone::clone_trait_object!(PaymentClassification);
 
@@ -94,28 +94,28 @@ dyn_clone::clone_trait_object!(PaymentSchedule);
 
 pub trait PaymentMethod: DynClone + Debug {
     // TODO: return type
-    fn pay(&self, pc: &PayCheck);
+    fn pay(&self, pc: &Paycheck);
 }
 dyn_clone::clone_trait_object!(PaymentMethod);
 
 pub trait Affiliation: DynClone + Debug {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn calculate_deductions(&self, _pc: &PayCheck) -> f32 {
+    fn calculate_deductions(&self, _pc: &Paycheck) -> f32 {
         0.0
     }
 }
 dyn_clone::clone_trait_object!(Affiliation);
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct PayCheck {
+pub struct Paycheck {
     period: RangeInclusive<NaiveDate>,
 
     gross_pay: f32,
     deductions: f32,
     net_pay: f32,
 }
-impl PayCheck {
+impl Paycheck {
     pub fn new(period: RangeInclusive<NaiveDate>) -> Self {
         Self {
             period,

@@ -1,4 +1,4 @@
-use payroll_domain::{Employee, EmployeeId, MemberId, PayCheck};
+use payroll_domain::{Employee, EmployeeId, MemberId, Paycheck};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Eq, PartialEq, Error)]
@@ -40,7 +40,7 @@ pub trait EmployeeDao<Ctx> {
     fn record_paycheck(
         &self,
         emp_id: EmployeeId,
-        pc: PayCheck,
+        pc: Paycheck,
     ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeDaoError>;
 }
 pub trait HaveEmployeeDao<Ctx> {
