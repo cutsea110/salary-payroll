@@ -1,7 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
 use abstract_tx::{AddEmployeeTransaction, UsecaseError};
-
 use payroll_domain::EmployeeId;
 use payroll_impl::{classification::CommissionedClassification, schedule::BiweeklySchedule};
 
