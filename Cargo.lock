@@ -171,7 +171,6 @@ dependencies = [
  "dao",
  "mock-db",
  "payroll-domain",
- "tx",
  "tx-app",
  "tx-impl",
  "tx-rs",
@@ -288,7 +287,6 @@ dependencies = [
  "mock-tx-impl",
  "parsec-rs",
  "parser",
- "tx",
  "tx-app",
 ]
 
@@ -313,18 +311,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "tx"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
-]
-
-[[package]]
 name = "tx-app"
 version = "0.1.0"
 dependencies = [
  "abstract-tx",
- "tx",
 ]
 
 [[package]]

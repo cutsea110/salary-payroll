@@ -15,5 +15,4 @@ tx-impl = { path = "../tx-impl" }
 dao = { path = "../dao" }
 mock-db = { path = "../mock-db" }
 payroll-domain = { path = "../payroll-domain" }
-tx = { path = "../tx" }
 tx-app = { path = "../tx-app" }

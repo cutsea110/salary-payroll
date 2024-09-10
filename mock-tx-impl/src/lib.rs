@@ -5,7 +5,7 @@ use abstract_tx::EmployeeUsecaseError;
 use dao::{EmployeeDao, HaveEmployeeDao};
 use mock_db::MockDb;
 use payroll_domain::{EmployeeId, MemberId};
-use tx::Transaction;
+use tx_app::Transaction;
 use tx_impl::{affiliation::*, classification::*, general::*, method::*};
 
 #[derive(Debug, Clone)]
