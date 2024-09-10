@@ -1,8 +1,8 @@
-use payroll_domain::{EmployeeId, PaymentClassification, PaymentSchedule};
 use std::{cell::RefCell, rc::Rc};
 
 use crate::change_employee_tx::ChangeEmployeeTransaction;
 use crate::error::UsecaseError;
+use payroll_domain::{EmployeeId, PaymentClassification, PaymentSchedule};
 
 pub trait ChangeClassificationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     fn execute<'a>(

@@ -1,8 +1,8 @@
-use dao::{EmployeeDao, HaveEmployeeDao};
-use payroll_domain::{Employee, EmployeeId};
 use tx_rs::Tx;
 
 use crate::error::UsecaseError;
+use dao::{EmployeeDao, HaveEmployeeDao};
+use payroll_domain::{Employee, EmployeeId};
 
 pub trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     fn execute<'a, F>(

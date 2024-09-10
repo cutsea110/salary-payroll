@@ -1,10 +1,10 @@
-use dao::{EmployeeDao, HaveEmployeeDao};
-use payroll_domain::{Employee, EmployeeId, PaymentClassification, PaymentSchedule};
-use payroll_impl::{affiliation::NoAffiliation, method::HoldMethod};
 use std::{cell::RefCell, rc::Rc};
 use tx_rs::Tx;
 
 use crate::error::UsecaseError;
+use dao::{EmployeeDao, HaveEmployeeDao};
+use payroll_domain::{Employee, EmployeeId, PaymentClassification, PaymentSchedule};
+use payroll_impl::{affiliation::NoAffiliation, method::HoldMethod};
 
 pub trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     fn execute<'a>(

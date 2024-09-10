@@ -1,7 +1,7 @@
-use payroll_domain::{Employee, EmployeeId, MemberId, Paycheck};
-
 mod error;
 pub use error::DaoError;
+
+use payroll_domain::{Employee, EmployeeId, MemberId, Paycheck};
 
 pub trait EmployeeDao<Ctx> {
     fn insert(&self, emp: Employee) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = DaoError>;
