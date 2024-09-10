@@ -1,7 +1,24 @@
+use chrono::NaiveDate;
 use std::any::Any;
 
-use crate::classification::sales_receipt::SalesReceipt;
 use payroll_domain::{Paycheck, PaymentClassification};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SalesReceipt {
+    date: NaiveDate,
+    amount: f32,
+}
+impl SalesReceipt {
+    pub fn new(date: NaiveDate, amount: f32) -> Self {
+        Self { date, amount }
+    }
+    pub fn get_date(&self) -> NaiveDate {
+        self.date
+    }
+    pub fn get_amount(&self) -> f32 {
+        self.amount
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CommissionedClassification {

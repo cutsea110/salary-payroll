@@ -1,7 +1,24 @@
+use chrono::NaiveDate;
 use std::any::Any;
 
-use crate::classification::timecard::TimeCard;
 use payroll_domain::{Paycheck, PaymentClassification};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TimeCard {
+    date: NaiveDate,
+    hours: f32,
+}
+impl TimeCard {
+    pub fn new(date: NaiveDate, hours: f32) -> Self {
+        Self { date, hours }
+    }
+    pub fn get_date(&self) -> NaiveDate {
+        self.date
+    }
+    pub fn get_hours(&self) -> f32 {
+        self.hours
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HourlyClassification {

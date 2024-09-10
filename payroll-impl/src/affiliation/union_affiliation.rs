@@ -1,8 +1,24 @@
-use chrono::{Datelike, Weekday};
+use chrono::{Datelike, NaiveDate, Weekday};
 use std::any::Any;
 
-use crate::affiliation::ServiceCharge;
 use payroll_domain::{Affiliation, MemberId, Paycheck};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ServiceCharge {
+    date: NaiveDate,
+    amount: f32,
+}
+impl ServiceCharge {
+    pub fn new(date: NaiveDate, amount: f32) -> Self {
+        Self { date, amount }
+    }
+    pub fn get_date(&self) -> NaiveDate {
+        self.date
+    }
+    pub fn get_amount(&self) -> f32 {
+        self.amount
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnionAffiliation {
