@@ -316,6 +316,7 @@ dependencies = [
  "mock-db",
  "parsec-rs",
  "parser",
+ "tx",
  "tx-app",
  "tx-impl",
 ]
@@ -341,10 +342,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "tx"
+version = "0.1.0"
+dependencies = [
+ "abstract-tx",
+]
+
+[[package]]
 name = "tx-app"
 version = "0.1.0"
 dependencies = [
  "abstract-tx",
+ "tx",
 ]
 
 [[package]]
@@ -360,6 +369,7 @@ dependencies = [
  "method-tx",
  "mock-db",
  "payroll-domain",
+ "tx",
  "tx-app",
  "tx-rs",
 ]

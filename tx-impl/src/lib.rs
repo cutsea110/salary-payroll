@@ -9,7 +9,7 @@ use general_tx::*;
 use method_tx::*;
 use mock_db::MockDb;
 use payroll_domain::{EmployeeId, MemberId};
-use tx_app::Transaction;
+use tx::Transaction;
 
 #[derive(Debug, Clone)]
 pub struct AddSalariedEmployeeTransactionImpl {

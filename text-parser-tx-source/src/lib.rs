@@ -3,7 +3,8 @@ use std::collections::VecDeque;
 
 use mock_db::MockDb;
 use parser::{transactions, Command};
-use tx_app::{Transaction, TransactionSource};
+use tx::Transaction;
+use tx_app::TransactionSource;
 use tx_impl::*;
 
 pub struct TextParserTransactionSource {

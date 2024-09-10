@@ -18,4 +18,5 @@ general-tx = { path = "../general-tx" }
 method-tx = { path = "../method-tx" }
 mock-db = { path = "../mock-db" }
 payroll-domain = { path = "../payroll-domain" }
+tx = { path = "../tx" }
 tx-app = { path = "../tx-app" }

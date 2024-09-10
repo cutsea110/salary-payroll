@@ -1,5 +1,5 @@
 [package]
-name = "tx-app"
+name = "tx"
 version.workspace = true
 authors.workspace = true
 description.workspace = true
@@ -8,4 +8,3 @@ edition.workspace = true
 
 [dependencies]
 abstract-tx = { path = "../abstract-tx" }
-tx = { path = "../tx" }
