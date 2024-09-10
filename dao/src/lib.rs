@@ -1,17 +1,8 @@
 use payroll_domain::{Employee, EmployeeId, MemberId, Paycheck};
-use thiserror::Error;
 
-#[derive(Debug, Clone, Eq, PartialEq, Error)]
-pub enum DaoError {
-    #[error("insert error: {0}")]
-    InsertError(String),
-    #[error("delete error: {0}")]
-    DeleteError(String),
-    #[error("fetch error: {0}")]
-    FetchError(String),
-    #[error("update error: {0}")]
-    UpdateError(String),
-}
+mod error;
+pub use error::DaoError;
+
 pub trait EmployeeDao<Ctx> {
     fn insert(&self, emp: Employee) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = DaoError>;
     fn delete(&self, emp_id: EmployeeId) -> impl tx_rs::Tx<Ctx, Item = (), Err = DaoError>;
@@ -37,6 +28,7 @@ pub trait EmployeeDao<Ctx> {
         pc: Paycheck,
     ) -> impl tx_rs::Tx<Ctx, Item = (), Err = DaoError>;
 }
+
 pub trait HaveEmployeeDao<Ctx> {
     fn dao(&self) -> Box<&impl EmployeeDao<Ctx>>;
 }
