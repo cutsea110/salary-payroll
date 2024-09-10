@@ -2,10 +2,10 @@ use parsec_rs::Parser;
 use std::collections::VecDeque;
 
 use mock_db::MockDb;
+use mock_tx_impl::*;
 use parser::{transactions, Command};
 use tx::Transaction;
 use tx_app::TransactionSource;
-use tx_impl::*;
 
 pub struct TextParserTransactionSource {
     txs: VecDeque<Box<dyn Transaction<()>>>,

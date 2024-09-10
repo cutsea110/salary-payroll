@@ -10,7 +10,7 @@ edition.workspace = true
 parsec-rs.workspace = true
 
 mock-db = { path = "../mock-db" }
+mock-tx-impl = { path = "../mock-tx-impl" }
 parser = { path = "../parser" }
 tx = { path = "../tx" }
 tx-app = { path = "../tx-app" }
-tx-impl = { path = "../tx-impl" }

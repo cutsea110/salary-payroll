@@ -207,6 +207,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "mock-tx-impl"
+version = "0.1.0"
+dependencies = [
+ "abstract-tx",
+ "affiliation-tx",
+ "chrono",
+ "classification-tx",
+ "dao",
+ "general-tx",
+ "method-tx",
+ "mock-db",
+ "payroll-domain",
+ "tx",
+ "tx-app",
+ "tx-rs",
+]
+
+[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -314,11 +332,11 @@ name = "text-parser-tx-source"
 version = "0.1.0"
 dependencies = [
  "mock-db",
+ "mock-tx-impl",
  "parsec-rs",
  "parser",
  "tx",
  "tx-app",
- "tx-impl",
 ]
 
 [[package]]
@@ -354,24 +372,6 @@ version = "0.1.0"
 dependencies = [
  "abstract-tx",
  "tx",
-]
-
-[[package]]
-name = "tx-impl"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "affiliation-tx",
- "chrono",
- "classification-tx",
- "dao",
- "general-tx",
- "method-tx",
- "mock-db",
- "payroll-domain",
- "tx",
- "tx-app",
- "tx-rs",
 ]
 
 [[package]]

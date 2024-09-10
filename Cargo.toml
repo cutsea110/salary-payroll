@@ -1,5 +1,5 @@
 [workspace]
-members = [ "abstract-tx", "affiliation-tx", "classification-tx", "dao", "general-tx", "method-tx", "mock-app", "mock-db", "mock-main", "parser", "payroll-domain", "payroll-impl", "text-parser-tx-source", "tx", "tx-app", "tx-impl"]
+members = [ "abstract-tx", "affiliation-tx", "classification-tx", "dao", "general-tx", "method-tx", "mock-app", "mock-db", "mock-main", "mock-tx-impl", "parser", "payroll-domain", "payroll-impl", "text-parser-tx-source", "tx", "tx-app"]
 resolver = "2"
 
 [workspace.package]
