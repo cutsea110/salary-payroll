@@ -2,34 +2,34 @@ use std::{cell::RefCell, rc::Rc};
 use thiserror::Error;
 use tx_rs::Tx;
 
-use dao::{EmployeeDao, EmployeeDaoError, HaveEmployeeDao};
+use dao::{DaoError, EmployeeDao, HaveEmployeeDao};
 use payroll_domain::{
     Affiliation, Employee, EmployeeId, PaymentClassification, PaymentMethod, PaymentSchedule,
 };
 use payroll_impl::{affiliation::NoAffiliation, method::HoldMethod};
 
 #[derive(Debug, Clone, Eq, PartialEq, Error)]
-pub enum EmployeeUsecaseError {
+pub enum UsecaseError {
     #[error("register employee failed: {0}")]
-    RegisterEmployeeFailed(EmployeeDaoError),
+    RegisterEmployeeFailed(DaoError),
     #[error("unregister employee failed: {0}")]
-    UnregisterEmployeeFailed(EmployeeDaoError),
+    UnregisterEmployeeFailed(DaoError),
     #[error("employee not found: {0}")]
-    NotFound(EmployeeDaoError),
+    NotFound(DaoError),
     #[error("can't get all employees: {0}")]
-    GetAllFailed(EmployeeDaoError),
+    GetAllFailed(DaoError),
     #[error("employee is not hourly salary: {0}")]
     NotHourlySalary(String),
     #[error("employee is not commissioned salary: {0}")]
     NotCommissionedSalary(String),
     #[error("update employee failed: {0}")]
-    UpdateEmployeeFailed(EmployeeDaoError),
+    UpdateEmployeeFailed(DaoError),
     #[error("employee is not union member: {0}")]
     NotUnionMember(String),
     #[error("add union member failed: {0}")]
-    AddUnionMemberFailed(EmployeeDaoError),
+    AddUnionMemberFailed(DaoError),
     #[error("remove union member failed: {0}")]
-    RemoveUnionMemberFailed(EmployeeDaoError),
+    RemoveUnionMemberFailed(DaoError),
 }
 
 pub trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
@@ -40,7 +40,7 @@ pub trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
         address: &str,
         classification: Rc<RefCell<dyn PaymentClassification>>,
         schedule: Rc<RefCell<dyn PaymentSchedule>>,
-    ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+    ) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -57,7 +57,7 @@ pub trait AddEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
         );
         self.dao()
             .insert(emp)
-            .map_err(EmployeeUsecaseError::RegisterEmployeeFailed)
+            .map_err(UsecaseError::RegisterEmployeeFailed)
     }
 }
 // blanket implementation
@@ -68,9 +68,9 @@ pub trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
         &'a self,
         emp_id: EmployeeId,
         f: F,
-    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
-        F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError>,
+        F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), UsecaseError>,
         Ctx: 'a,
     {
         tx_rs::with_tx(move |ctx| {
@@ -78,12 +78,12 @@ pub trait ChangeEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                 .dao()
                 .fetch(emp_id)
                 .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
+                .map_err(UsecaseError::NotFound)?;
             f(ctx, &mut emp)?;
             self.dao()
                 .update(emp)
                 .run(ctx)
-                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+                .map_err(UsecaseError::UpdateEmployeeFailed)
         })
     }
 }
@@ -96,7 +96,7 @@ pub trait ChangeClassificationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         emp_id: EmployeeId,
         classification: Rc<RefCell<dyn PaymentClassification>>,
         schedule: Rc<RefCell<dyn PaymentSchedule>>,
-    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -115,7 +115,7 @@ pub trait ChangeMethodTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         &'a self,
         emp_id: EmployeeId,
         method: Rc<RefCell<dyn PaymentMethod>>,
-    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -134,9 +134,9 @@ pub trait ChangeAffiliationTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
         emp_id: EmployeeId,
         record_membership: F,
         affiliation: Rc<RefCell<dyn Affiliation>>,
-    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
-        F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), EmployeeUsecaseError>,
+        F: FnOnce(&mut Ctx, &mut Employee) -> Result<(), UsecaseError>,
         Ctx: 'a,
     {
         ChangeEmployeeTransaction::<Ctx>::execute(self, emp_id, |ctx, emp| {

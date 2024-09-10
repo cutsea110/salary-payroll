@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use abstract_tx::{ChangeClassificationTransaction, EmployeeUsecaseError};
+use abstract_tx::{ChangeClassificationTransaction, UsecaseError};
 use payroll_domain::EmployeeId;
 use payroll_impl::{
     classification::{CommissionedClassification, HourlyClassification, SalariedClassification},
@@ -15,7 +15,7 @@ pub trait SalaryChangeableEmployee {
 pub trait ChangeSalariedTransaction<Ctx>:
     ChangeClassificationTransaction<Ctx> + SalaryChangeableEmployee
 {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -40,7 +40,7 @@ pub trait HourlyChangeableEmployee {
 pub trait ChangeHourlyTransaction<Ctx>:
     ChangeClassificationTransaction<Ctx> + HourlyChangeableEmployee
 {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -68,7 +68,7 @@ pub trait CommissionedChangeableEmployee {
 pub trait ChangeCommissionedTransaction<Ctx>:
     ChangeClassificationTransaction<Ctx> + CommissionedChangeableEmployee
 {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {

@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use dao::{EmployeeDao, EmployeeDaoError};
+use dao::{DaoError, EmployeeDao};
 use payroll_domain::{Employee, EmployeeId, MemberId, Paycheck};
 
 #[derive(Debug, Clone)]
@@ -19,14 +19,11 @@ impl MockDb {
     }
 }
 impl EmployeeDao<()> for MockDb {
-    fn insert(
-        &self,
-        emp: Employee,
-    ) -> impl tx_rs::Tx<(), Item = EmployeeId, Err = EmployeeDaoError> {
+    fn insert(&self, emp: Employee) -> impl tx_rs::Tx<(), Item = EmployeeId, Err = DaoError> {
         tx_rs::with_tx(move |_| {
             let emp_id = emp.get_emp_id();
             if self.employees.borrow().contains_key(&emp_id) {
-                return Err(EmployeeDaoError::InsertError(format!(
+                return Err(DaoError::InsertError(format!(
                     "emp_id={} already exists",
                     emp_id
                 )));
@@ -35,10 +32,10 @@ impl EmployeeDao<()> for MockDb {
             Ok(emp_id)
         })
     }
-    fn delete(&self, emp_id: EmployeeId) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+    fn delete(&self, emp_id: EmployeeId) -> impl tx_rs::Tx<(), Item = (), Err = DaoError> {
         tx_rs::with_tx(move |_| {
             if self.employees.borrow_mut().remove(&emp_id).is_none() {
-                return Err(EmployeeDaoError::DeleteError(format!(
+                return Err(DaoError::DeleteError(format!(
                     "emp_id={} not found",
                     emp_id
                 )));
@@ -46,23 +43,17 @@ impl EmployeeDao<()> for MockDb {
             Ok(())
         })
     }
-    fn fetch(
-        &self,
-        emp_id: EmployeeId,
-    ) -> impl tx_rs::Tx<(), Item = Employee, Err = EmployeeDaoError> {
+    fn fetch(&self, emp_id: EmployeeId) -> impl tx_rs::Tx<(), Item = Employee, Err = DaoError> {
         tx_rs::with_tx(move |_| match self.employees.borrow().get(&emp_id) {
             Some(emp) => Ok(emp.clone()),
-            None => Err(EmployeeDaoError::FetchError(format!(
-                "emp_id={} not found",
-                emp_id
-            ))),
+            None => Err(DaoError::FetchError(format!("emp_id={} not found", emp_id))),
         })
     }
-    fn update(&self, emp: Employee) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+    fn update(&self, emp: Employee) -> impl tx_rs::Tx<(), Item = (), Err = DaoError> {
         tx_rs::with_tx(move |_| {
             let emp_id = emp.get_emp_id();
             if !self.employees.borrow().contains_key(&emp_id) {
-                return Err(EmployeeDaoError::UpdateError(format!(
+                return Err(DaoError::UpdateError(format!(
                     "emp_id={} not found",
                     emp_id
                 )));
@@ -71,7 +62,7 @@ impl EmployeeDao<()> for MockDb {
             Ok(())
         })
     }
-    fn get_all(&self) -> impl tx_rs::Tx<(), Item = Vec<Employee>, Err = EmployeeDaoError> {
+    fn get_all(&self) -> impl tx_rs::Tx<(), Item = Vec<Employee>, Err = DaoError> {
         tx_rs::with_tx(move |_| Ok(self.employees.borrow().values().cloned().collect()))
     }
 
@@ -79,16 +70,16 @@ impl EmployeeDao<()> for MockDb {
         &self,
         member_id: MemberId,
         emp_id: EmployeeId,
-    ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+    ) -> impl tx_rs::Tx<(), Item = (), Err = DaoError> {
         tx_rs::with_tx(move |_| {
             if self.union_members.borrow().contains_key(&member_id) {
-                return Err(EmployeeDaoError::InsertError(format!(
+                return Err(DaoError::InsertError(format!(
                     "member_id={} already exists",
                     member_id
                 )));
             }
             if self.union_members.borrow().values().any(|&v| v == emp_id) {
-                return Err(EmployeeDaoError::InsertError(format!(
+                return Err(DaoError::InsertError(format!(
                     "emp_id={} already exists",
                     emp_id
                 )));
@@ -100,10 +91,10 @@ impl EmployeeDao<()> for MockDb {
     fn remove_union_member(
         &self,
         member_id: MemberId,
-    ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+    ) -> impl tx_rs::Tx<(), Item = (), Err = DaoError> {
         tx_rs::with_tx(move |_| {
             if self.union_members.borrow_mut().remove(&member_id).is_none() {
-                return Err(EmployeeDaoError::DeleteError(format!(
+                return Err(DaoError::DeleteError(format!(
                     "member_id={} not found",
                     member_id
                 )));
@@ -115,10 +106,10 @@ impl EmployeeDao<()> for MockDb {
     fn find_union_member(
         &self,
         member_id: MemberId,
-    ) -> impl tx_rs::Tx<(), Item = EmployeeId, Err = EmployeeDaoError> {
+    ) -> impl tx_rs::Tx<(), Item = EmployeeId, Err = DaoError> {
         tx_rs::with_tx(move |_| match self.union_members.borrow().get(&member_id) {
             Some(&emp_id) => Ok(emp_id),
-            None => Err(EmployeeDaoError::FetchError(format!(
+            None => Err(DaoError::FetchError(format!(
                 "member_id={} not found",
                 member_id
             ))),
@@ -129,7 +120,7 @@ impl EmployeeDao<()> for MockDb {
         &self,
         emp_id: EmployeeId,
         pc: Paycheck,
-    ) -> impl tx_rs::Tx<(), Item = (), Err = EmployeeDaoError> {
+    ) -> impl tx_rs::Tx<(), Item = (), Err = DaoError> {
         tx_rs::with_tx(move |_| {
             self.paychecks
                 .borrow_mut()

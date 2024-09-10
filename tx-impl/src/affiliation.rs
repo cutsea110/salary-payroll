@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 use std::{cell::RefCell, rc::Rc};
 use tx_rs::Tx;
 
-use abstract_tx::{ChangeAffiliationTransaction, EmployeeUsecaseError};
+use abstract_tx::{ChangeAffiliationTransaction, UsecaseError};
 use dao::{EmployeeDao, HaveEmployeeDao};
 use payroll_domain::{EmployeeId, MemberId};
 use payroll_impl::affiliation::{NoAffiliation, ServiceCharge, UnionAffiliation};
@@ -13,31 +13,30 @@ pub trait ServiceChargeableMember {
     fn get_amount(&self) -> f32;
 }
 pub trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> + ServiceChargeableMember {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError> {
         tx_rs::with_tx(move |ctx| {
             let emp_id = self
                 .dao()
                 .find_union_member(self.get_member_id())
                 .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
+                .map_err(UsecaseError::NotFound)?;
             let emp = self
                 .dao()
                 .fetch(emp_id)
                 .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
+                .map_err(UsecaseError::NotFound)?;
             emp.get_affiliation()
                 .borrow_mut()
                 .as_any_mut()
                 .downcast_mut::<UnionAffiliation>()
-                .ok_or(EmployeeUsecaseError::NotUnionMember(format!(
-                    "emp_id: {0}",
-                    emp_id,
-                )))?
+                .ok_or(UsecaseError::NotUnionMember(
+                    format!("emp_id: {0}", emp_id,),
+                ))?
                 .add_service_charge(ServiceCharge::new(self.get_date(), self.get_amount()));
             self.dao()
                 .update(emp)
                 .run(ctx)
-                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+                .map_err(UsecaseError::UpdateEmployeeFailed)
         })
     }
 }
@@ -55,7 +54,7 @@ pub trait UnionChangeableEmployee {
 pub trait ChangeUnionMemberTransaction<Ctx>:
     ChangeAffiliationTransaction<Ctx> + UnionChangeableEmployee
 {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -66,7 +65,7 @@ pub trait ChangeUnionMemberTransaction<Ctx>:
                 self.dao()
                     .add_union_member(self.get_member_id(), self.get_emp_id())
                     .run(ctx)
-                    .map_err(EmployeeUsecaseError::AddUnionMemberFailed)
+                    .map_err(UsecaseError::AddUnionMemberFailed)
             },
             Rc::new(RefCell::new(UnionAffiliation::new(
                 self.get_member_id(),
@@ -87,7 +86,7 @@ pub trait NoAffiliationChangeableEmployee {
 pub trait ChangeUnaffiliatedTransaction<Ctx>:
     ChangeAffiliationTransaction<Ctx> + NoAffiliationChangeableEmployee
 {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -101,7 +100,7 @@ pub trait ChangeUnaffiliatedTransaction<Ctx>:
                     .as_any()
                     .downcast_ref::<UnionAffiliation>()
                     .map_or(
-                        Err(EmployeeUsecaseError::NotUnionMember(format!(
+                        Err(UsecaseError::NotUnionMember(format!(
                             "emp_id: {}",
                             self.get_emp_id()
                         ))),
@@ -110,7 +109,7 @@ pub trait ChangeUnaffiliatedTransaction<Ctx>:
                 self.dao()
                     .remove_union_member(member_id)
                     .run(ctx)
-                    .map_err(EmployeeUsecaseError::RemoveUnionMemberFailed)
+                    .map_err(UsecaseError::RemoveUnionMemberFailed)
             },
             Rc::new(RefCell::new(NoAffiliation)),
         )

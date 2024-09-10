@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use tx_rs::Tx;
 
-use abstract_tx::EmployeeUsecaseError;
+use abstract_tx::UsecaseError;
 use dao::{EmployeeDao, HaveEmployeeDao};
 use mock_db::MockDb;
 use payroll_domain::{EmployeeId, MemberId};
@@ -37,7 +37,7 @@ impl SalaryEmployee for AddSalariedEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for AddSalariedEmployeeTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         AddSalaryEmployeeTransaction::execute(self)
             .run(&mut ())
             .map(|_| ())
@@ -73,7 +73,7 @@ impl HourlyEmployee for AddHourlyEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for AddHourlyEmployeeTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         AddHourlyEmployeeTransaction::execute(self)
             .run(&mut ())
             .map(|_| ())
@@ -113,7 +113,7 @@ impl CommissionedEmployee for AddCommissionedEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for AddCommissionedEmployeeTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         AddCommissionedEmployeeTransaction::execute(self)
             .run(&mut ())
             .map(|_| ())
@@ -137,7 +137,7 @@ impl DeletableEmployee for DeleteEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for DeleteEmployeeTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         DeleteEmployeeTransaction::execute(self)
             .run(&mut ())
             .map(|_| ())
@@ -169,7 +169,7 @@ impl TimeCardEmployee for TimeCardTransactionImpl {
     }
 }
 impl Transaction<()> for TimeCardTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         TimeCardTransaction::execute(self).run(&mut ())
     }
 }
@@ -199,7 +199,7 @@ impl SalesReceiptEmployee for SalesReceiptTransactionImpl {
     }
 }
 impl Transaction<()> for SalesReceiptTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         SalesReceiptTransaction::execute(self).run(&mut ())
     }
 }
@@ -229,7 +229,7 @@ impl ServiceChargeableMember for ServiceChargeTransactionImpl {
     }
 }
 impl Transaction<()> for ServiceChargeTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         ServiceChargeTransaction::execute(self).run(&mut ())
     }
 }
@@ -255,7 +255,7 @@ impl NameChangeableEmployee for ChangeNameTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeNameTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         ChangeNameTransaction::execute(self).run(&mut ())
     }
 }
@@ -281,7 +281,7 @@ impl AddressChangeableEmployee for ChangeAddressTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeAddressTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         ChangeAddressTransaction::execute(self).run(&mut ())
     }
 }
@@ -307,7 +307,7 @@ impl SalaryChangeableEmployee for ChangeSalaryTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeSalaryTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         ChangeSalariedTransaction::execute(self).run(&mut ())
     }
 }
@@ -333,7 +333,7 @@ impl HourlyChangeableEmployee for ChangeHourlyTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeHourlyTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         ChangeHourlyTransaction::execute(self).run(&mut ())
     }
 }
@@ -363,7 +363,7 @@ impl CommissionedChangeableEmployee for ChangeCommissionedTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeCommissionedTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         ChangeCommissionedTransaction::execute(self).run(&mut ())
     }
 }
@@ -393,7 +393,7 @@ impl DirectChangeableEmployee for ChangeDirectTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeDirectTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         ChangeDirectTransaction::execute(self).run(&mut ())
     }
 }
@@ -419,7 +419,7 @@ impl MailChangeableEmployee for ChangeMailTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeMailTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         ChangeMailTransaction::execute(self).run(&mut ())
     }
 }
@@ -441,7 +441,7 @@ impl HoldChangeableEmployee for ChangeHoldTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeHoldTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         ChangeHoldTransaction::execute(self).run(&mut ())
     }
 }
@@ -471,7 +471,7 @@ impl UnionChangeableEmployee for ChangeUnionMemberTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeUnionMemberTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         ChangeUnionMemberTransaction::execute(self).run(&mut ())
     }
 }
@@ -493,7 +493,7 @@ impl NoAffiliationChangeableEmployee for ChangeNoMemberTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeNoMemberTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         ChangeUnaffiliatedTransaction::execute(self).run(&mut ())
     }
 }
@@ -515,7 +515,7 @@ impl PayableEmployee for PaydayTransactionImpl {
     }
 }
 impl Transaction<()> for PaydayTransactionImpl {
-    fn execute(&mut self) -> Result<(), EmployeeUsecaseError> {
+    fn execute(&mut self) -> Result<(), UsecaseError> {
         PaydayTransaction::execute(self).run(&mut ())
     }
 }

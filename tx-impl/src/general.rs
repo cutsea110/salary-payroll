@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 use std::{cell::RefCell, rc::Rc};
 use tx_rs::Tx;
 
-use abstract_tx::{AddEmployeeTransaction, ChangeEmployeeTransaction, EmployeeUsecaseError};
+use abstract_tx::{AddEmployeeTransaction, ChangeEmployeeTransaction, UsecaseError};
 use dao::{EmployeeDao, HaveEmployeeDao};
 use payroll_domain::{EmployeeId, Paycheck};
 use payroll_impl::{
@@ -20,7 +20,7 @@ pub trait SalaryEmployee {
     fn get_salary(&self) -> f32;
 }
 pub trait AddSalaryEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> + SalaryEmployee {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -53,7 +53,7 @@ pub trait HourlyEmployee {
     fn get_hourly_rate(&self) -> f32;
 }
 pub trait AddHourlyEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> + HourlyEmployee {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -91,7 +91,7 @@ pub trait CommissionedEmployee {
 pub trait AddCommissionedEmployeeTransaction<Ctx>:
     AddEmployeeTransaction<Ctx> + CommissionedEmployee
 {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = EmployeeId, Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -124,13 +124,13 @@ pub trait DeletableEmployee {
     fn get_emp_id(&self) -> EmployeeId;
 }
 pub trait DeleteEmployeeTransaction<Ctx>: HaveEmployeeDao<Ctx> + DeletableEmployee {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
         self.dao()
             .delete(self.get_emp_id())
-            .map_err(EmployeeUsecaseError::UnregisterEmployeeFailed)
+            .map_err(UsecaseError::UnregisterEmployeeFailed)
     }
 }
 // blanket implementation
@@ -142,18 +142,18 @@ pub trait TimeCardEmployee {
     fn get_hours(&self) -> f32;
 }
 pub trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> + TimeCardEmployee {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError> {
         tx_rs::with_tx(move |ctx| {
             let emp = self
                 .dao()
                 .fetch(self.get_emp_id())
                 .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
+                .map_err(UsecaseError::NotFound)?;
             emp.get_classification()
                 .borrow_mut()
                 .as_any_mut()
                 .downcast_mut::<HourlyClassification>()
-                .ok_or(EmployeeUsecaseError::NotHourlySalary(format!(
+                .ok_or(UsecaseError::NotHourlySalary(format!(
                     "emp_id: {}",
                     self.get_emp_id()
                 )))?
@@ -161,7 +161,7 @@ pub trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> + TimeCardEmployee {
             self.dao()
                 .update(emp)
                 .run(ctx)
-                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+                .map_err(UsecaseError::UpdateEmployeeFailed)
         })
     }
 }
@@ -174,18 +174,18 @@ pub trait SalesReceiptEmployee {
     fn get_amount(&self) -> f32;
 }
 pub trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> + SalesReceiptEmployee {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError> {
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError> {
         tx_rs::with_tx(move |ctx| {
             let emp = self
                 .dao()
                 .fetch(self.get_emp_id())
                 .run(ctx)
-                .map_err(EmployeeUsecaseError::NotFound)?;
+                .map_err(UsecaseError::NotFound)?;
             emp.get_classification()
                 .borrow_mut()
                 .as_any_mut()
                 .downcast_mut::<CommissionedClassification>()
-                .ok_or(EmployeeUsecaseError::NotCommissionedSalary(format!(
+                .ok_or(UsecaseError::NotCommissionedSalary(format!(
                     "emp_id: {}",
                     self.get_emp_id()
                 )))?
@@ -193,7 +193,7 @@ pub trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> + SalesReceiptEmplo
             self.dao()
                 .update(emp)
                 .run(ctx)
-                .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)
+                .map_err(UsecaseError::UpdateEmployeeFailed)
         })
     }
 }
@@ -207,7 +207,7 @@ pub trait NameChangeableEmployee {
 pub trait ChangeNameTransaction<Ctx>:
     ChangeEmployeeTransaction<Ctx> + NameChangeableEmployee
 {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -230,7 +230,7 @@ pub trait AddressChangeableEmployee {
 pub trait ChangeAddressTransaction<Ctx>:
     ChangeEmployeeTransaction<Ctx> + AddressChangeableEmployee
 {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -250,7 +250,7 @@ pub trait PayableEmployee {
     fn get_pay_date(&self) -> NaiveDate;
 }
 pub trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> + PayableEmployee {
-    fn execute<'a>(&mut self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&mut self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -259,7 +259,7 @@ pub trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> + PayableEmployee {
                 .dao()
                 .get_all()
                 .run(ctx)
-                .map_err(EmployeeUsecaseError::GetAllFailed)?;
+                .map_err(UsecaseError::GetAllFailed)?;
             let pay_date = self.get_pay_date();
             for emp in employees.iter_mut() {
                 if emp.is_pay_date(pay_date) {
@@ -269,7 +269,7 @@ pub trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> + PayableEmployee {
                     self.dao()
                         .record_paycheck(emp.get_emp_id(), pc)
                         .run(ctx)
-                        .map_err(EmployeeUsecaseError::UpdateEmployeeFailed)?;
+                        .map_err(UsecaseError::UpdateEmployeeFailed)?;
                 }
             }
             Ok(())

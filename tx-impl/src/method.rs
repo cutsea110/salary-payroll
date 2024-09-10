@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use abstract_tx::{ChangeMethodTransaction, EmployeeUsecaseError};
+use abstract_tx::{ChangeMethodTransaction, UsecaseError};
 use payroll_domain::EmployeeId;
 use payroll_impl::method::{DirectMethod, HoldMethod, MailMethod};
 
@@ -12,7 +12,7 @@ pub trait DirectChangeableEmployee {
 pub trait ChangeDirectTransaction<Ctx>:
     ChangeMethodTransaction<Ctx> + DirectChangeableEmployee
 {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -39,7 +39,7 @@ pub trait MailChangeableEmployee {
 pub trait ChangeMailTransaction<Ctx>:
     ChangeMethodTransaction<Ctx> + MailChangeableEmployee
 {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
@@ -64,7 +64,7 @@ pub trait HoldChangeableEmployee {
 pub trait ChangeHoldTransaction<Ctx>:
     ChangeMethodTransaction<Ctx> + HoldChangeableEmployee
 {
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = EmployeeUsecaseError>
+    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
