@@ -14,18 +14,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "affiliation-tx"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "chrono",
- "dao",
- "payroll-domain",
- "payroll-impl",
- "tx-rs",
-]
-
-[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -83,16 +71,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "classification-tx"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "payroll-domain",
- "payroll-impl",
- "tx-rs",
-]
-
-[[package]]
 name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -112,18 +90,6 @@ name = "dyn-clone"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
-
-[[package]]
-name = "general-tx"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "chrono",
- "dao",
- "payroll-domain",
- "payroll-impl",
- "tx-rs",
-]
 
 [[package]]
 name = "iana-time-zone"
@@ -170,16 +136,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
-name = "method-tx"
-version = "0.1.0"
-dependencies = [
- "abstract-tx",
- "payroll-domain",
- "payroll-impl",
- "tx-rs",
-]
-
-[[package]]
 name = "mock-app"
 version = "0.1.0"
 dependencies = [
@@ -211,16 +167,13 @@ name = "mock-tx-impl"
 version = "0.1.0"
 dependencies = [
  "abstract-tx",
- "affiliation-tx",
  "chrono",
- "classification-tx",
  "dao",
- "general-tx",
- "method-tx",
  "mock-db",
  "payroll-domain",
  "tx",
  "tx-app",
+ "tx-impl",
  "tx-rs",
 ]
 
@@ -372,6 +325,18 @@ version = "0.1.0"
 dependencies = [
  "abstract-tx",
  "tx",
+]
+
+[[package]]
+name = "tx-impl"
+version = "0.1.0"
+dependencies = [
+ "abstract-tx",
+ "chrono",
+ "dao",
+ "payroll-domain",
+ "payroll-impl",
+ "tx-rs",
 ]
 
 [[package]]

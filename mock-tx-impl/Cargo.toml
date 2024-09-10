@@ -11,11 +11,8 @@ chrono.workspace = true
 tx-rs.workspace = true
 
 abstract-tx = { path = "../abstract-tx" }
-affiliation-tx = { path = "../affiliation-tx" }
-classification-tx = { path = "../classification-tx" }
+tx-impl = { path = "../tx-impl" }
 dao = { path = "../dao" }
-general-tx = { path = "../general-tx" }
-method-tx = { path = "../method-tx" }
 mock-db = { path = "../mock-db" }
 payroll-domain = { path = "../payroll-domain" }
 tx = { path = "../tx" }

@@ -2,14 +2,11 @@ use chrono::NaiveDate;
 use tx_rs::Tx;
 
 use abstract_tx::EmployeeUsecaseError;
-use affiliation_tx::*;
-use classification_tx::*;
 use dao::{EmployeeDao, HaveEmployeeDao};
-use general_tx::*;
-use method_tx::*;
 use mock_db::MockDb;
 use payroll_domain::{EmployeeId, MemberId};
 use tx::Transaction;
+use tx_impl::{affiliation::*, classification::*, general::*, method::*};
 
 #[derive(Debug, Clone)]
 pub struct AddSalariedEmployeeTransactionImpl {
