@@ -5,7 +5,7 @@ use dao::{EmployeeDao, HaveEmployeeDao};
 use mock_db::MockDb;
 use payroll_domain::EmployeeId;
 use tx_app::Transaction;
-use tx_impl::method::{ChangeMailTransaction, MailChangeableEmployee};
+use tx_impl::method::ChangeMailTransaction;
 
 #[derive(Debug, Clone)]
 pub struct ChangeMailTransactionImpl {
@@ -19,16 +19,8 @@ impl HaveEmployeeDao<()> for ChangeMailTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl MailChangeableEmployee for ChangeMailTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
-    }
-    fn get_address(&self) -> &str {
-        &self.address
-    }
-}
 impl Transaction<()> for ChangeMailTransactionImpl {
     fn execute(&mut self) -> Result<(), UsecaseError> {
-        ChangeMailTransaction::execute(self).run(&mut ())
+        ChangeMailTransaction::execute(self, self.emp_id, &self.address).run(&mut ())
     }
 }

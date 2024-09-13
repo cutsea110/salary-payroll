@@ -12,7 +12,10 @@ impl PaymentMethod for DirectMethod {
     }
 }
 impl DirectMethod {
-    pub fn new(bank: String, account: String) -> Self {
-        Self { bank, account }
+    pub fn new(bank: &str, account: &str) -> Self {
+        Self {
+            bank: bank.to_string(),
+            account: account.to_string(),
+        }
     }
 }

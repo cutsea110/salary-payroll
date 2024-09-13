@@ -11,7 +11,9 @@ impl PaymentMethod for MailMethod {
     }
 }
 impl MailMethod {
-    pub fn new(address: String) -> Self {
-        Self { address }
+    pub fn new(address: &str) -> Self {
+        Self {
+            address: address.to_string(),
+        }
     }
 }

@@ -5,7 +5,7 @@ use dao::{EmployeeDao, HaveEmployeeDao};
 use mock_db::MockDb;
 use payroll_domain::EmployeeId;
 use tx_app::Transaction;
-use tx_impl::method::{ChangeDirectTransaction, DirectChangeableEmployee};
+use tx_impl::method::ChangeDirectTransaction;
 
 #[derive(Debug, Clone)]
 pub struct ChangeDirectTransactionImpl {
@@ -20,19 +20,8 @@ impl HaveEmployeeDao<()> for ChangeDirectTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl DirectChangeableEmployee for ChangeDirectTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
-    }
-    fn get_bank(&self) -> &str {
-        &self.bank
-    }
-    fn get_account(&self) -> &str {
-        &self.account
-    }
-}
 impl Transaction<()> for ChangeDirectTransactionImpl {
     fn execute(&mut self) -> Result<(), UsecaseError> {
-        ChangeDirectTransaction::execute(self).run(&mut ())
+        ChangeDirectTransaction::execute(self, self.emp_id, &self.bank, &self.account).run(&mut ())
     }
 }
