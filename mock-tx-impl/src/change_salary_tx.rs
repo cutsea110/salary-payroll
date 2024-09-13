@@ -5,7 +5,7 @@ use dao::{EmployeeDao, HaveEmployeeDao};
 use mock_db::MockDb;
 use payroll_domain::EmployeeId;
 use tx_app::Transaction;
-use tx_impl::classification::{ChangeSalariedTransaction, SalaryChangeableEmployee};
+use tx_impl::classification::ChangeSalariedTransaction;
 
 #[derive(Debug, Clone)]
 pub struct ChangeSalaryTransactionImpl {
@@ -19,16 +19,8 @@ impl HaveEmployeeDao<()> for ChangeSalaryTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl SalaryChangeableEmployee for ChangeSalaryTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
-    }
-    fn get_salary(&self) -> f32 {
-        self.salary
-    }
-}
 impl Transaction<()> for ChangeSalaryTransactionImpl {
     fn execute(&mut self) -> Result<(), UsecaseError> {
-        ChangeSalariedTransaction::execute(self).run(&mut ())
+        ChangeSalariedTransaction::execute(self, self.emp_id, self.salary).run(&mut ())
     }
 }
