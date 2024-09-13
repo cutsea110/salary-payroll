@@ -6,30 +6,25 @@ use dao::EmployeeDao;
 use payroll_domain::EmployeeId;
 use payroll_impl::affiliation::{NoAffiliation, UnionAffiliation};
 
-pub trait NoAffiliationChangeableEmployee {
-    fn get_emp_id(&self) -> EmployeeId;
-}
-pub trait ChangeUnaffiliatedTransaction<Ctx>:
-    ChangeAffiliationTransaction<Ctx> + NoAffiliationChangeableEmployee
-{
-    fn execute<'a>(&'a self) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
+pub trait ChangeUnaffiliatedTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> {
+    fn execute<'a>(
+        &'a self,
+        emp_id: EmployeeId,
+    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {
         ChangeAffiliationTransaction::<Ctx>::execute(
             self,
-            self.get_emp_id(),
-            |ctx, emp| {
+            emp_id,
+            move |ctx, emp| {
                 let member_id = emp
                     .get_affiliation()
                     .borrow()
                     .as_any()
                     .downcast_ref::<UnionAffiliation>()
                     .map_or(
-                        Err(UsecaseError::NotUnionMember(format!(
-                            "emp_id: {}",
-                            self.get_emp_id()
-                        ))),
+                        Err(UsecaseError::NotUnionMember(format!("emp_id: {}", emp_id))),
                         |a| Ok(a.get_member_id()),
                     )?;
                 self.dao()
@@ -42,7 +37,4 @@ pub trait ChangeUnaffiliatedTransaction<Ctx>:
     }
 }
 // blanket implementation
-impl<T, Ctx> ChangeUnaffiliatedTransaction<Ctx> for T where
-    T: ChangeAffiliationTransaction<Ctx> + NoAffiliationChangeableEmployee
-{
-}
+impl<T, Ctx> ChangeUnaffiliatedTransaction<Ctx> for T where T: ChangeAffiliationTransaction<Ctx> {}

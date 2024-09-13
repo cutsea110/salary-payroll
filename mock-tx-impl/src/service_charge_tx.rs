@@ -6,7 +6,7 @@ use dao::{EmployeeDao, HaveEmployeeDao};
 use mock_db::MockDb;
 use payroll_domain::MemberId;
 use tx_app::Transaction;
-use tx_impl::affiliation::{ServiceChargeTransaction, ServiceChargeableMember};
+use tx_impl::affiliation::ServiceChargeTransaction;
 
 #[derive(Debug, Clone)]
 pub struct ServiceChargeTransactionImpl {
@@ -21,19 +21,8 @@ impl HaveEmployeeDao<()> for ServiceChargeTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl ServiceChargeableMember for ServiceChargeTransactionImpl {
-    fn get_member_id(&self) -> MemberId {
-        self.member_id
-    }
-    fn get_date(&self) -> NaiveDate {
-        self.date
-    }
-    fn get_amount(&self) -> f32 {
-        self.amount
-    }
-}
 impl Transaction<()> for ServiceChargeTransactionImpl {
     fn execute(&mut self) -> Result<(), UsecaseError> {
-        ServiceChargeTransaction::execute(self).run(&mut ())
+        ServiceChargeTransaction::execute(self, self.member_id, self.date, self.amount).run(&mut ())
     }
 }

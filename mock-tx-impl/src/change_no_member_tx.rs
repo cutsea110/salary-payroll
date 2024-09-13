@@ -5,7 +5,7 @@ use dao::{EmployeeDao, HaveEmployeeDao};
 use mock_db::MockDb;
 use payroll_domain::EmployeeId;
 use tx_app::Transaction;
-use tx_impl::affiliation::{ChangeUnaffiliatedTransaction, NoAffiliationChangeableEmployee};
+use tx_impl::affiliation::ChangeUnaffiliatedTransaction;
 
 #[derive(Debug, Clone)]
 pub struct ChangeNoMemberTransactionImpl {
@@ -18,13 +18,8 @@ impl HaveEmployeeDao<()> for ChangeNoMemberTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl NoAffiliationChangeableEmployee for ChangeNoMemberTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
-    }
-}
 impl Transaction<()> for ChangeNoMemberTransactionImpl {
     fn execute(&mut self) -> Result<(), UsecaseError> {
-        ChangeUnaffiliatedTransaction::execute(self).run(&mut ())
+        ChangeUnaffiliatedTransaction::execute(self, self.emp_id).run(&mut ())
     }
 }
