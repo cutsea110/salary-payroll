@@ -1,6 +1,5 @@
 use dyn_clone::DynClone;
-use std::any::Any;
-use std::fmt::Debug;
+use std::{any::Any, fmt::Debug};
 
 use crate::bo::Paycheck;
 

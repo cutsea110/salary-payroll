@@ -1,6 +1,5 @@
 use chrono::NaiveDate;
-use core::fmt::Debug;
-use std::{cell::RefCell, ops::RangeInclusive, rc::Rc};
+use std::{cell::RefCell, fmt::Debug, ops::RangeInclusive, rc::Rc};
 
 use crate::bo::Paycheck;
 use crate::interface::{Affiliation, PaymentClassification, PaymentMethod, PaymentSchedule};

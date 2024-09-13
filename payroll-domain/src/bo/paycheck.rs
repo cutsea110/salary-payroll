@@ -1,6 +1,5 @@
 use chrono::NaiveDate;
-use core::fmt::Debug;
-use std::ops::RangeInclusive;
+use std::{fmt::Debug, ops::RangeInclusive};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Paycheck {

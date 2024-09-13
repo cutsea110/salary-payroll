@@ -1,4 +1,5 @@
 mod employee;
 mod paycheck;
 
-pub use crate::bo::{employee::Employee, paycheck::Paycheck};
+pub use employee::Employee;
+pub use paycheck::Paycheck;
