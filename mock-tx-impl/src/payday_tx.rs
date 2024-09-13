@@ -18,13 +18,8 @@ impl HaveEmployeeDao<()> for PaydayTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl PayableEmployee for PaydayTransactionImpl {
-    fn get_pay_date(&self) -> NaiveDate {
-        self.pay_date
-    }
-}
 impl Transaction<()> for PaydayTransactionImpl {
     fn execute(&mut self) -> Result<(), UsecaseError> {
-        PaydayTransaction::execute(self).run(&mut ())
+        PaydayTransaction::execute(self, self.pay_date).run(&mut ())
     }
 }

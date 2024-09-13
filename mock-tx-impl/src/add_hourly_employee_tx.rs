@@ -5,7 +5,7 @@ use dao::{EmployeeDao, HaveEmployeeDao};
 use mock_db::MockDb;
 use payroll_domain::EmployeeId;
 use tx_app::Transaction;
-use tx_impl::general::{AddHourlyEmployeeTransaction, HourlyEmployee};
+use tx_impl::general::AddHourlyEmployeeTransaction;
 
 #[derive(Debug, Clone)]
 pub struct AddHourlyEmployeeTransactionImpl {
@@ -21,24 +21,16 @@ impl HaveEmployeeDao<()> for AddHourlyEmployeeTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl HourlyEmployee for AddHourlyEmployeeTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
-    }
-    fn get_name(&self) -> &str {
-        &self.name
-    }
-    fn get_address(&self) -> &str {
-        &self.address
-    }
-    fn get_hourly_rate(&self) -> f32 {
-        self.hourly_rate
-    }
-}
 impl Transaction<()> for AddHourlyEmployeeTransactionImpl {
     fn execute(&mut self) -> Result<(), UsecaseError> {
-        AddHourlyEmployeeTransaction::execute(self)
-            .run(&mut ())
-            .map(|_| ())
+        AddHourlyEmployeeTransaction::execute(
+            self,
+            self.emp_id,
+            &self.name,
+            &self.address,
+            self.hourly_rate,
+        )
+        .run(&mut ())
+        .map(|_| ())
     }
 }

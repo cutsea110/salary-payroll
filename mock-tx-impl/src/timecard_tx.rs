@@ -6,7 +6,7 @@ use dao::{EmployeeDao, HaveEmployeeDao};
 use mock_db::MockDb;
 use payroll_domain::EmployeeId;
 use tx_app::Transaction;
-use tx_impl::general::{TimeCardEmployee, TimeCardTransaction};
+use tx_impl::general::TimeCardTransaction;
 
 #[derive(Debug, Clone)]
 pub struct TimeCardTransactionImpl {
@@ -21,19 +21,8 @@ impl HaveEmployeeDao<()> for TimeCardTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl TimeCardEmployee for TimeCardTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
-    }
-    fn get_date(&self) -> NaiveDate {
-        self.date
-    }
-    fn get_hours(&self) -> f32 {
-        self.hours
-    }
-}
 impl Transaction<()> for TimeCardTransactionImpl {
     fn execute(&mut self) -> Result<(), UsecaseError> {
-        TimeCardTransaction::execute(self).run(&mut ())
+        TimeCardTransaction::execute(self, self.emp_id, self.date, self.hours).run(&mut ())
     }
 }

@@ -5,7 +5,7 @@ use dao::{EmployeeDao, HaveEmployeeDao};
 use mock_db::MockDb;
 use payroll_domain::EmployeeId;
 use tx_app::Transaction;
-use tx_impl::general::{DeletableEmployee, DeleteEmployeeTransaction};
+use tx_impl::general::DeleteEmployeeTransaction;
 
 #[derive(Debug, Clone)]
 pub struct DeleteEmployeeTransactionImpl {
@@ -18,14 +18,9 @@ impl HaveEmployeeDao<()> for DeleteEmployeeTransactionImpl {
         Box::new(&self.db)
     }
 }
-impl DeletableEmployee for DeleteEmployeeTransactionImpl {
-    fn get_emp_id(&self) -> EmployeeId {
-        self.emp_id
-    }
-}
 impl Transaction<()> for DeleteEmployeeTransactionImpl {
     fn execute(&mut self) -> Result<(), UsecaseError> {
-        DeleteEmployeeTransaction::execute(self)
+        DeleteEmployeeTransaction::execute(self, self.emp_id)
             .run(&mut ())
             .map(|_| ())
     }
