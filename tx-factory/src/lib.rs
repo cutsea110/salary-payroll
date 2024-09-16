@@ -7,22 +7,22 @@ pub trait TransactionFactory<Ctx> {
     fn mk_add_salary_employee_tx(
         &self,
         emp_id: EmployeeId,
-        name: &str,
-        address: &str,
+        name: String,
+        address: String,
         salary: f32,
     ) -> impl Transaction<Ctx>;
     fn mk_add_hourly_employee_tx(
         &self,
         emp_id: EmployeeId,
-        name: &str,
-        address: &str,
+        name: String,
+        address: String,
         hourly_rate: f32,
     ) -> impl Transaction<Ctx>;
     fn mk_add_commissioned_employee_tx(
         &self,
         emp_id: EmployeeId,
-        name: &str,
-        address: &str,
+        name: String,
+        address: String,
         salary: f32,
         commission_rate: f32,
     ) -> impl Transaction<Ctx>;
@@ -39,8 +39,8 @@ pub trait TransactionFactory<Ctx> {
         date: NaiveDate,
         amount: f32,
     ) -> impl Transaction<Ctx>;
-    fn mk_change_name_tx(&self, emp_id: EmployeeId, name: &str) -> impl Transaction<Ctx>;
-    fn mk_change_address_tx(&self, emp_id: EmployeeId, address: &str) -> impl Transaction<Ctx>;
+    fn mk_change_name_tx(&self, emp_id: EmployeeId, name: String) -> impl Transaction<Ctx>;
+    fn mk_change_address_tx(&self, emp_id: EmployeeId, address: String) -> impl Transaction<Ctx>;
     fn mk_change_salaried_tx(&self, emp_id: EmployeeId, salary: f32) -> impl Transaction<Ctx>;
     fn mk_change_hourly_tx(&self, emp_id: EmployeeId, hourly_rate: f32) -> impl Transaction<Ctx>;
     fn mk_change_commissioned_tx(
@@ -52,10 +52,10 @@ pub trait TransactionFactory<Ctx> {
     fn mk_change_direct_tx(
         &self,
         emp_id: EmployeeId,
-        bank: &str,
-        account: &str,
+        bank: String,
+        account: String,
     ) -> impl Transaction<Ctx>;
-    fn mk_change_mail_tx(&self, emp_id: EmployeeId, address: &str) -> impl Transaction<Ctx>;
+    fn mk_change_mail_tx(&self, emp_id: EmployeeId, address: String) -> impl Transaction<Ctx>;
     fn mk_change_hold_tx(&self, emp_id: EmployeeId) -> impl Transaction<Ctx>;
     fn mk_change_union_member_tx(
         &self,

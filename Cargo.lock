@@ -294,6 +294,7 @@ dependencies = [
  "parsec-rs",
  "parser",
  "tx-app",
+ "tx-factory",
 ]
 
 [[package]]

@@ -7,50 +7,55 @@ use tx_factory::TransactionFactory;
 pub struct TransactionFactoryImpl {
     db: MockDb,
 }
+impl TransactionFactoryImpl {
+    pub fn new(db: MockDb) -> Self {
+        Self { db }
+    }
+}
 impl TransactionFactory<()> for TransactionFactoryImpl {
     fn mk_add_salary_employee_tx(
         &self,
         emp_id: EmployeeId,
-        name: &str,
-        address: &str,
+        name: String,
+        address: String,
         salary: f32,
     ) -> impl Transaction<()> {
         crate::add_salaried_employee_tx::AddSalariedEmployeeTransactionImpl {
             db: self.db.clone(),
             emp_id,
-            name: name.to_string(),
-            address: address.to_string(),
+            name,
+            address,
             salary,
         }
     }
     fn mk_add_hourly_employee_tx(
         &self,
         emp_id: EmployeeId,
-        name: &str,
-        address: &str,
+        name: String,
+        address: String,
         hourly_rate: f32,
     ) -> impl Transaction<()> {
         crate::add_hourly_employee_tx::AddHourlyEmployeeTransactionImpl {
             db: self.db.clone(),
             emp_id,
-            name: name.to_string(),
-            address: address.to_string(),
+            name,
+            address,
             hourly_rate,
         }
     }
     fn mk_add_commissioned_employee_tx(
         &self,
         emp_id: EmployeeId,
-        name: &str,
-        address: &str,
+        name: String,
+        address: String,
         salary: f32,
         commission_rate: f32,
     ) -> impl Transaction<()> {
         crate::add_commissioned_employee_tx::AddCommissionedEmployeeTransactionImpl {
             db: self.db.clone(),
             emp_id,
-            name: name.to_string(),
-            address: address.to_string(),
+            name,
+            address,
             salary,
             commission_rate,
         }
@@ -87,14 +92,14 @@ impl TransactionFactory<()> for TransactionFactoryImpl {
             amount,
         }
     }
-    fn mk_change_name_tx(&self, emp_id: EmployeeId, name: &str) -> impl Transaction<()> {
+    fn mk_change_name_tx(&self, emp_id: EmployeeId, name: String) -> impl Transaction<()> {
         crate::change_name_tx::ChangeNameTransactionImpl {
             db: self.db.clone(),
             emp_id,
-            name: name.to_string(),
+            name,
         }
     }
-    fn mk_change_address_tx(&self, emp_id: EmployeeId, address: &str) -> impl Transaction<()> {
+    fn mk_change_address_tx(&self, emp_id: EmployeeId, address: String) -> impl Transaction<()> {
         crate::change_address_tx::ChangeAddressTransactionImpl {
             db: self.db.clone(),
             emp_id,
@@ -131,21 +136,21 @@ impl TransactionFactory<()> for TransactionFactoryImpl {
     fn mk_change_direct_tx(
         &self,
         emp_id: EmployeeId,
-        bank: &str,
-        account: &str,
+        bank: String,
+        account: String,
     ) -> impl Transaction<()> {
         crate::change_direct_tx::ChangeDirectTransactionImpl {
             db: self.db.clone(),
             emp_id,
-            bank: bank.to_string(),
-            account: account.to_string(),
+            bank,
+            account,
         }
     }
-    fn mk_change_mail_tx(&self, emp_id: EmployeeId, address: &str) -> impl Transaction<()> {
+    fn mk_change_mail_tx(&self, emp_id: EmployeeId, address: String) -> impl Transaction<()> {
         crate::change_mail_tx::ChangeMailTransactionImpl {
             db: self.db.clone(),
             emp_id,
-            address: address.to_string(),
+            address,
         }
     }
     fn mk_change_hold_tx(&self, emp_id: EmployeeId) -> impl Transaction<()> {
