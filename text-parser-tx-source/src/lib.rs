@@ -9,23 +9,27 @@ use tx_factory::TransactionFactory;
 
 pub struct TextParserTransactionSource {
     tx_factory: TransactionFactoryImpl,
-    txs: VecDeque<Command>,
+    commands: VecDeque<Command>,
 }
 impl TransactionSource<()> for TextParserTransactionSource {
     fn get_transaction(&mut self) -> Option<Box<dyn Transaction<()> + '_>> {
-        self.txs.pop_front().map(|c| c.convert(&self.tx_factory))
+        self.commands
+            .pop_front()
+            .map(|c| c.convert(&self.tx_factory))
     }
 }
 impl TextParserTransactionSource {
     pub fn new(db: MockDb, input: String) -> Self {
         let tx_factory = TransactionFactoryImpl::new(db.clone());
-
-        let txs = transactions()
+        let commands = transactions()
             .parse(&input)
-            .map(|(ts, _)| ts.into())
+            .map(|p| p.0.into())
             .unwrap_or_default();
 
-        Self { tx_factory, txs }
+        Self {
+            tx_factory,
+            commands,
+        }
     }
 }
 
@@ -43,23 +47,13 @@ impl Converter<TransactionFactoryImpl, ()> for Command {
                 name,
                 address,
                 salary,
-            } => Box::new(tx_factory.mk_add_salary_employee_tx(
-                emp_id,
-                name.clone(),
-                address.clone(),
-                salary,
-            )),
+            } => Box::new(tx_factory.mk_add_salary_employee_tx(emp_id, name, address, salary)),
             Command::AddHourlyEmp {
                 emp_id,
                 name,
                 address,
                 hourly_rate,
-            } => Box::new(tx_factory.mk_add_hourly_employee_tx(
-                emp_id,
-                name.clone(),
-                address.clone(),
-                hourly_rate,
-            )),
+            } => Box::new(tx_factory.mk_add_hourly_employee_tx(emp_id, name, address, hourly_rate)),
             Command::AddCommissionedEmp {
                 emp_id,
                 name,
@@ -68,8 +62,8 @@ impl Converter<TransactionFactoryImpl, ()> for Command {
                 commission_rate,
             } => Box::new(tx_factory.mk_add_commissioned_employee_tx(
                 emp_id,
-                name.clone(),
-                address.clone(),
+                name,
+                address,
                 salary,
                 commission_rate,
             )),
@@ -90,10 +84,10 @@ impl Converter<TransactionFactoryImpl, ()> for Command {
                 amount,
             } => Box::new(tx_factory.mk_service_charge_tx(member_id, date, amount)),
             Command::ChgName { emp_id, name } => {
-                Box::new(tx_factory.mk_change_name_tx(emp_id, name.clone()))
+                Box::new(tx_factory.mk_change_name_tx(emp_id, name))
             }
             Command::ChgAddress { emp_id, address } => {
-                Box::new(tx_factory.mk_change_address_tx(emp_id, address.clone()))
+                Box::new(tx_factory.mk_change_address_tx(emp_id, address))
             }
             Command::ChgSalaried { emp_id, salary } => {
                 Box::new(tx_factory.mk_change_salaried_tx(emp_id, salary))
@@ -112,9 +106,9 @@ impl Converter<TransactionFactoryImpl, ()> for Command {
                 emp_id,
                 bank,
                 account,
-            } => Box::new(tx_factory.mk_change_direct_tx(emp_id, bank.clone(), account.clone())),
+            } => Box::new(tx_factory.mk_change_direct_tx(emp_id, bank, account)),
             Command::ChgMail { emp_id, address } => {
-                Box::new(tx_factory.mk_change_mail_tx(emp_id, address.clone()))
+                Box::new(tx_factory.mk_change_mail_tx(emp_id, address))
             }
             Command::ChgMember {
                 emp_id,
