@@ -109,7 +109,7 @@ fn to_tx(command: Command, db: MockDb) -> Box<dyn Transaction<()>> {
             address,
         }),
         Command::ChgSalaried { emp_id, salary } => {
-            Box::new(ChangeSalaryTransactionImpl { db, emp_id, salary })
+            Box::new(ChangeSalariedTransactionImpl { db, emp_id, salary })
         }
         Command::ChgHourly {
             emp_id,
@@ -155,7 +155,9 @@ fn to_tx(command: Command, db: MockDb) -> Box<dyn Transaction<()>> {
             member_id,
             dues,
         }),
-        Command::ChgNoMember { emp_id } => Box::new(ChangeNoMemberTransactionImpl { db, emp_id }),
+        Command::ChgNoMember { emp_id } => {
+            Box::new(ChangeUnaffiliatedTransactionImpl { db, emp_id })
+        }
         Command::Payday { pay_date } => Box::new(PaydayTransactionImpl { db, pay_date }),
     }
 }

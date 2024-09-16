@@ -173,6 +173,7 @@ dependencies = [
  "mock-db",
  "payroll-domain",
  "tx-app",
+ "tx-factory",
  "tx-impl",
  "tx-rs",
 ]
@@ -333,6 +334,8 @@ dependencies = [
 name = "tx-factory"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "payroll-domain",
  "tx-app",
 ]
 

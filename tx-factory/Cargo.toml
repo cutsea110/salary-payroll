@@ -7,4 +7,7 @@ documentation.workspace = true
 edition.workspace = true
 
 [dependencies]
+chrono.workspace = true
+
+payroll-domain = { path = "../payroll-domain" }
 tx-app = { path = "../tx-app" }

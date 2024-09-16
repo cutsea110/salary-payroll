@@ -5,22 +5,21 @@ use dao::{EmployeeDao, HaveEmployeeDao};
 use mock_db::MockDb;
 use payroll_domain::EmployeeId;
 use tx_app::Transaction;
-use tx_impl::classification::ChangeSalariedTransaction;
+use tx_impl::affiliation::ChangeUnaffiliatedTransaction;
 
 #[derive(Debug, Clone)]
-pub struct ChangeSalaryTransactionImpl {
+pub struct ChangeUnaffiliatedTransactionImpl {
     pub db: MockDb,
 
     pub emp_id: EmployeeId,
-    pub salary: f32,
 }
-impl HaveEmployeeDao<()> for ChangeSalaryTransactionImpl {
+impl HaveEmployeeDao<()> for ChangeUnaffiliatedTransactionImpl {
     fn dao(&self) -> Box<&impl EmployeeDao<()>> {
         Box::new(&self.db)
     }
 }
-impl Transaction<()> for ChangeSalaryTransactionImpl {
+impl Transaction<()> for ChangeUnaffiliatedTransactionImpl {
     fn execute(&mut self) -> Result<(), UsecaseError> {
-        ChangeSalariedTransaction::execute(self, self.emp_id, self.salary).run(&mut ())
+        ChangeUnaffiliatedTransaction::execute(self, self.emp_id).run(&mut ())
     }
 }
