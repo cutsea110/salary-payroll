@@ -1,7 +1,17 @@
 use chrono::NaiveDate;
 use parsec_rs::{char, float32, int32, keyword, pred, spaces, string, uint32, Parser};
+use std::collections::VecDeque;
 
 use crate::command::Command;
+
+pub fn read_commands(script: &str) -> VecDeque<Command> {
+    let commands: VecDeque<Command> = transactions()
+        .parse(script)
+        .map(|p| p.0.into())
+        .unwrap_or_default();
+
+    commands
+}
 
 pub fn transactions() -> impl Parser<Item = Vec<Command>> {
     transaction().many0()
