@@ -202,10 +202,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "payroll-app"
-version = "0.1.0"
-
-[[package]]
 name = "payroll-domain"
 version = "0.1.0"
 dependencies = [
