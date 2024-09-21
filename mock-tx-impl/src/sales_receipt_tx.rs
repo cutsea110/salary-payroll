@@ -22,7 +22,7 @@ impl HaveEmployeeDao<()> for SalesReceiptTransactionImpl {
     }
 }
 impl Transaction<()> for SalesReceiptTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
-        SalesReceiptTransaction::execute(self, self.emp_id, self.date, self.amount).run(&mut ())
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
+        SalesReceiptTransaction::execute(self, self.emp_id, self.date, self.amount).run(ctx)
     }
 }

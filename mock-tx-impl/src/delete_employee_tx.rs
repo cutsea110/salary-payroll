@@ -19,9 +19,9 @@ impl HaveEmployeeDao<()> for DeleteEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for DeleteEmployeeTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
         DeleteEmployeeTransaction::execute(self, self.emp_id)
-            .run(&mut ())
+            .run(ctx)
             .map(|_| ())
     }
 }

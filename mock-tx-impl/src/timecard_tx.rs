@@ -22,7 +22,7 @@ impl HaveEmployeeDao<()> for TimeCardTransactionImpl {
     }
 }
 impl Transaction<()> for TimeCardTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
-        TimeCardTransaction::execute(self, self.emp_id, self.date, self.hours).run(&mut ())
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
+        TimeCardTransaction::execute(self, self.emp_id, self.date, self.hours).run(ctx)
     }
 }

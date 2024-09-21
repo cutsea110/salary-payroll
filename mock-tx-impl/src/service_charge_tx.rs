@@ -22,7 +22,7 @@ impl HaveEmployeeDao<()> for ServiceChargeTransactionImpl {
     }
 }
 impl Transaction<()> for ServiceChargeTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
-        ServiceChargeTransaction::execute(self, self.member_id, self.date, self.amount).run(&mut ())
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
+        ServiceChargeTransaction::execute(self, self.member_id, self.date, self.amount).run(ctx)
     }
 }

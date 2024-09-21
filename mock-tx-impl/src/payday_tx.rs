@@ -19,7 +19,7 @@ impl HaveEmployeeDao<()> for PaydayTransactionImpl {
     }
 }
 impl Transaction<()> for PaydayTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
-        PaydayTransaction::execute(self, self.pay_date).run(&mut ())
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
+        PaydayTransaction::execute(self, self.pay_date).run(ctx)
     }
 }

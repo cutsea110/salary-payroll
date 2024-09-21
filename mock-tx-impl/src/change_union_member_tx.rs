@@ -21,8 +21,7 @@ impl HaveEmployeeDao<()> for ChangeUnionMemberTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeUnionMemberTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
-        ChangeUnionMemberTransaction::execute(self, self.emp_id, self.member_id, self.dues)
-            .run(&mut ())
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
+        ChangeUnionMemberTransaction::execute(self, self.emp_id, self.member_id, self.dues).run(ctx)
     }
 }

@@ -21,7 +21,7 @@ impl HaveEmployeeDao<()> for ChangeDirectTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeDirectTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
-        ChangeDirectTransaction::execute(self, self.emp_id, &self.bank, &self.account).run(&mut ())
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
+        ChangeDirectTransaction::execute(self, self.emp_id, &self.bank, &self.account).run(ctx)
     }
 }

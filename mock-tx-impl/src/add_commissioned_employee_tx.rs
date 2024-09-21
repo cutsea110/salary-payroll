@@ -23,7 +23,7 @@ impl HaveEmployeeDao<()> for AddCommissionedEmployeeTransactionImpl {
     }
 }
 impl Transaction<()> for AddCommissionedEmployeeTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
         AddCommissionedEmployeeTransaction::execute(
             self,
             self.emp_id,
@@ -32,7 +32,7 @@ impl Transaction<()> for AddCommissionedEmployeeTransactionImpl {
             self.salary,
             self.commission_rate,
         )
-        .run(&mut ())
+        .run(ctx)
         .map(|_| ())
     }
 }

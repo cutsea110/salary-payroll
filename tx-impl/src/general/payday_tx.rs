@@ -6,10 +6,7 @@ use dao::{EmployeeDao, HaveEmployeeDao};
 use payroll_domain::Paycheck;
 
 pub trait PaydayTransaction<Ctx>: HaveEmployeeDao<Ctx> {
-    fn execute<'a>(
-        &mut self,
-        pay_date: NaiveDate,
-    ) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
+    fn execute<'a>(&self, pay_date: NaiveDate) -> impl tx_rs::Tx<Ctx, Item = (), Err = UsecaseError>
     where
         Ctx: 'a,
     {

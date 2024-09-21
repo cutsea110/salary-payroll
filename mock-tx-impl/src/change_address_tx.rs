@@ -20,7 +20,7 @@ impl HaveEmployeeDao<()> for ChangeAddressTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeAddressTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
-        ChangeAddressTransaction::execute(self, self.emp_id, &self.address).run(&mut ())
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
+        ChangeAddressTransaction::execute(self, self.emp_id, &self.address).run(ctx)
     }
 }

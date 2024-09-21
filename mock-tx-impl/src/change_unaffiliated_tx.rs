@@ -19,7 +19,7 @@ impl HaveEmployeeDao<()> for ChangeUnaffiliatedTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeUnaffiliatedTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
-        ChangeUnaffiliatedTransaction::execute(self, self.emp_id).run(&mut ())
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
+        ChangeUnaffiliatedTransaction::execute(self, self.emp_id).run(ctx)
     }
 }

@@ -4,7 +4,7 @@ use tx_app::TransactionApplication;
 
 fn main() -> Result<(), UsecaseError> {
     let mut app = TestPayrollApp::new("script/test.scr");
-    app.run()?;
+    app.run(&mut ())?;
     println!("{:#?}", app);
 
     Ok(())

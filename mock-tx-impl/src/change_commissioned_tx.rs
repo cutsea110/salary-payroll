@@ -21,8 +21,8 @@ impl HaveEmployeeDao<()> for ChangeCommissionedTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeCommissionedTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
         ChangeCommissionedTransaction::execute(self, self.emp_id, self.salary, self.commission_rate)
-            .run(&mut ())
+            .run(ctx)
     }
 }

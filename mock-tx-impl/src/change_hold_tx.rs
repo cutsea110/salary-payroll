@@ -19,7 +19,7 @@ impl HaveEmployeeDao<()> for ChangeHoldTransactionImpl {
     }
 }
 impl Transaction<()> for ChangeHoldTransactionImpl {
-    fn execute(&mut self) -> Result<(), UsecaseError> {
-        ChangeHoldTransaction::execute(self, self.emp_id).run(&mut ())
+    fn execute(&self, ctx: &mut ()) -> Result<(), UsecaseError> {
+        ChangeHoldTransaction::execute(self, self.emp_id).run(ctx)
     }
 }
