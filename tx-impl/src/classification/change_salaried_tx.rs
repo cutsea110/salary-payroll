@@ -13,7 +13,7 @@ pub trait ChangeSalariedTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        ChangeClassificationTransaction::<Ctx>::execute(
+        ChangeClassificationTransaction::execute(
             self,
             emp_id,
             Rc::new(RefCell::new(SalariedClassification::new(salary))),

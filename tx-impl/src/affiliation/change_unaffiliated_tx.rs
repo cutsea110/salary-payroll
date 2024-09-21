@@ -14,7 +14,7 @@ pub trait ChangeUnaffiliatedTransaction<Ctx>: ChangeAffiliationTransaction<Ctx> 
     where
         Ctx: 'a,
     {
-        ChangeAffiliationTransaction::<Ctx>::execute(
+        ChangeAffiliationTransaction::execute(
             self,
             emp_id,
             move |ctx, emp| {

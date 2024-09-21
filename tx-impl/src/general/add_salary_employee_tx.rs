@@ -15,7 +15,7 @@ pub trait AddSalaryEmployeeTransaction<Ctx>: AddEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        AddEmployeeTransaction::<Ctx>::execute(
+        AddEmployeeTransaction::execute(
             self,
             emp_id,
             name,

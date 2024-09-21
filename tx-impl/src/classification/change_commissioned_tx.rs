@@ -14,7 +14,7 @@ pub trait ChangeCommissionedTransaction<Ctx>: ChangeClassificationTransaction<Ct
     where
         Ctx: 'a,
     {
-        ChangeClassificationTransaction::<Ctx>::execute(
+        ChangeClassificationTransaction::execute(
             self,
             emp_id,
             Rc::new(RefCell::new(CommissionedClassification::new(

@@ -13,7 +13,7 @@ pub trait ChangeHourlyTransaction<Ctx>: ChangeClassificationTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        ChangeClassificationTransaction::<Ctx>::execute(
+        ChangeClassificationTransaction::execute(
             self,
             emp_id,
             Rc::new(RefCell::new(HourlyClassification::new(hourly_rate))),

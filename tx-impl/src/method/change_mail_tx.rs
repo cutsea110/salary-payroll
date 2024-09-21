@@ -13,7 +13,7 @@ pub trait ChangeMailTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        ChangeMethodTransaction::<Ctx>::execute(
+        ChangeMethodTransaction::execute(
             self,
             emp_id,
             Rc::new(RefCell::new(MailMethod::new(address))),

@@ -12,7 +12,7 @@ pub trait ChangeHoldTransaction<Ctx>: ChangeMethodTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        ChangeMethodTransaction::<Ctx>::execute(self, emp_id, Rc::new(RefCell::new(HoldMethod)))
+        ChangeMethodTransaction::execute(self, emp_id, Rc::new(RefCell::new(HoldMethod)))
     }
 }
 // blanket implementation

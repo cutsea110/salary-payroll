@@ -10,7 +10,7 @@ pub trait ChangeAddressTransaction<Ctx>: ChangeEmployeeTransaction<Ctx> {
     where
         Ctx: 'a,
     {
-        ChangeEmployeeTransaction::<Ctx>::execute(self, emp_id, |_ctx, emp| {
+        ChangeEmployeeTransaction::execute(self, emp_id, |_ctx, emp| {
             emp.set_address(address);
             Ok(())
         })
