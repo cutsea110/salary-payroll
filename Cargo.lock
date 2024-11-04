@@ -196,7 +196,7 @@ checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 [[package]]
 name = "parsec-rs"
 version = "0.1.0"
-source = "git+https://github.com/cutsea110/fragments.git?branch=main#7aea1b5f55a72a9d5d311360b97559d8fa580053"
+source = "git+https://github.com/cutsea110/fragments.git?branch=main#a3e4aa43b8552e31a241556bd92e02651da9a6fb"
 dependencies = [
  "thiserror",
 ]
@@ -287,18 +287,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.66"
+version = "1.0.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d171f59dbaa811dbbb1aee1e73db92ec2b122911a48e1390dfe327a821ddede"
+checksum = "02dd99dc800bbb97186339685293e1cc5d9df1f8fae2d0aecd9ff1c77efea892"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.66"
+version = "1.0.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b08be0f17bd307950653ce45db00cd31200d82b624b36e181337d9c7d92765b5"
+checksum = "a7c61ec9a6f64d2793d8a45faba21efbe3ced62a886d44c36a009b2b519b4c7e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -336,7 +336,7 @@ dependencies = [
 [[package]]
 name = "tx-rs"
 version = "0.1.0"
-source = "git+https://github.com/cutsea110/fragments.git?branch=main#7aea1b5f55a72a9d5d311360b97559d8fa580053"
+source = "git+https://github.com/cutsea110/fragments.git?branch=main#a3e4aa43b8552e31a241556bd92e02651da9a6fb"
 
 [[package]]
 name = "unicode-ident"
