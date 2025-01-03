@@ -4,7 +4,7 @@ use tx_rs::Tx;
 use abstract_tx::UsecaseError;
 use dao::{EmployeeDao, HaveEmployeeDao};
 use payroll_domain::EmployeeId;
-use payroll_impl::classification::{CommissionedClassification, SalesReceipt};
+use payroll_impl::classification::CommissionedClassification;
 
 pub trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     fn execute<'a>(
@@ -27,7 +27,7 @@ pub trait SalesReceiptTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                     "emp_id: {}",
                     emp_id
                 )))?
-                .add_sales_receipt(SalesReceipt::new(date, amount));
+                .add_sales_receipt(date, amount);
             self.dao()
                 .update(emp)
                 .run(ctx)

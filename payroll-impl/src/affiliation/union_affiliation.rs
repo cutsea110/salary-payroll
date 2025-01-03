@@ -4,18 +4,18 @@ use std::any::Any;
 use payroll_domain::{Affiliation, MemberId, Paycheck};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ServiceCharge {
+struct ServiceCharge {
     date: NaiveDate,
     amount: f32,
 }
 impl ServiceCharge {
-    pub fn new(date: NaiveDate, amount: f32) -> Self {
+    fn new(date: NaiveDate, amount: f32) -> Self {
         Self { date, amount }
     }
-    pub fn get_date(&self) -> NaiveDate {
+    fn get_date(&self) -> NaiveDate {
         self.date
     }
-    pub fn get_amount(&self) -> f32 {
+    fn get_amount(&self) -> f32 {
         self.amount
     }
 }
@@ -41,8 +41,8 @@ impl UnionAffiliation {
     pub fn get_dues(&self) -> f32 {
         self.dues
     }
-    pub fn add_service_charge(&mut self, sc: ServiceCharge) {
-        self.service_charges.push(sc);
+    pub fn add_service_charge(&mut self, date: NaiveDate, amount: f32) {
+        self.service_charges.push(ServiceCharge::new(date, amount));
     }
 }
 impl Affiliation for UnionAffiliation {

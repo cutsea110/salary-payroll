@@ -4,7 +4,7 @@ use tx_rs::Tx;
 use abstract_tx::UsecaseError;
 use dao::{EmployeeDao, HaveEmployeeDao};
 use payroll_domain::EmployeeId;
-use payroll_impl::classification::{HourlyClassification, TimeCard};
+use payroll_impl::classification::HourlyClassification;
 
 pub trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     fn execute<'a>(
@@ -24,7 +24,7 @@ pub trait TimeCardTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                 .as_any_mut()
                 .downcast_mut::<HourlyClassification>()
                 .ok_or(UsecaseError::NotHourlySalary(format!("emp_id: {}", emp_id)))?
-                .add_timecard(TimeCard::new(date, hours));
+                .add_timecard(date, hours);
             self.dao()
                 .update(emp)
                 .run(ctx)

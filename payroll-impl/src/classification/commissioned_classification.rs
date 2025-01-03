@@ -4,18 +4,18 @@ use std::any::Any;
 use payroll_domain::{Paycheck, PaymentClassification};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SalesReceipt {
+struct SalesReceipt {
     date: NaiveDate,
     amount: f32,
 }
 impl SalesReceipt {
-    pub fn new(date: NaiveDate, amount: f32) -> Self {
+    fn new(date: NaiveDate, amount: f32) -> Self {
         Self { date, amount }
     }
-    pub fn get_date(&self) -> NaiveDate {
+    fn get_date(&self) -> NaiveDate {
         self.date
     }
-    pub fn get_amount(&self) -> f32 {
+    fn get_amount(&self) -> f32 {
         self.amount
     }
 }
@@ -49,10 +49,10 @@ impl CommissionedClassification {
             sales_receipts: vec![],
         }
     }
-    pub fn add_sales_receipt(&mut self, sr: SalesReceipt) {
-        self.sales_receipts.push(sr);
+    pub fn add_sales_receipt(&mut self, date: NaiveDate, amount: f32) {
+        self.sales_receipts.push(SalesReceipt::new(date, amount));
     }
-    pub fn calculate_pay_for_sales_receipt(&self, sr: &SalesReceipt) -> f32 {
+    fn calculate_pay_for_sales_receipt(&self, sr: &SalesReceipt) -> f32 {
         self.commission_rate * sr.get_amount()
     }
 }

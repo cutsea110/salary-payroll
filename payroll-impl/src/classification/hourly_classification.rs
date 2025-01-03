@@ -4,18 +4,18 @@ use std::any::Any;
 use payroll_domain::{Paycheck, PaymentClassification};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TimeCard {
+struct TimeCard {
     date: NaiveDate,
     hours: f32,
 }
 impl TimeCard {
-    pub fn new(date: NaiveDate, hours: f32) -> Self {
+    fn new(date: NaiveDate, hours: f32) -> Self {
         Self { date, hours }
     }
-    pub fn get_date(&self) -> NaiveDate {
+    fn get_date(&self) -> NaiveDate {
         self.date
     }
-    pub fn get_hours(&self) -> f32 {
+    fn get_hours(&self) -> f32 {
         self.hours
     }
 }
@@ -47,10 +47,10 @@ impl HourlyClassification {
             timecards: vec![],
         }
     }
-    pub fn add_timecard(&mut self, tc: TimeCard) {
-        self.timecards.push(tc);
+    pub fn add_timecard(&mut self, date: NaiveDate, hours: f32) {
+        self.timecards.push(TimeCard::new(date, hours));
     }
-    pub fn calculate_pay_for_timecard(&self, tc: &TimeCard) -> f32 {
+    fn calculate_pay_for_timecard(&self, tc: &TimeCard) -> f32 {
         let hours = tc.get_hours();
         let overtime = (hours - 8.0).max(0.0);
         let straight_time = hours - overtime;

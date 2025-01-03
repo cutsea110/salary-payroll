@@ -4,7 +4,7 @@ use tx_rs::Tx;
 use abstract_tx::UsecaseError;
 use dao::{EmployeeDao, HaveEmployeeDao};
 use payroll_domain::MemberId;
-use payroll_impl::affiliation::{ServiceCharge, UnionAffiliation};
+use payroll_impl::affiliation::UnionAffiliation;
 
 pub trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
     fn execute<'a>(
@@ -31,7 +31,7 @@ pub trait ServiceChargeTransaction<Ctx>: HaveEmployeeDao<Ctx> {
                 .ok_or(UsecaseError::NotUnionMember(
                     format!("emp_id: {0}", emp_id,),
                 ))?
-                .add_service_charge(ServiceCharge::new(date, amount));
+                .add_service_charge(date, amount);
             self.dao()
                 .update(emp)
                 .run(ctx)
