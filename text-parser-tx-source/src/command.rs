@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-use payroll_domain::EmployeeId;
+use payroll_domain::{EmployeeId, MemberId};
 use tx_app::Transaction;
 use tx_factory::TransactionFactory;
 
@@ -39,7 +39,7 @@ pub enum Command {
         amount: f32,
     },
     ServiceCharge {
-        member_id: EmployeeId,
+        member_id: MemberId,
         date: NaiveDate,
         amount: f32,
     },
@@ -78,7 +78,7 @@ pub enum Command {
     },
     ChgMember {
         emp_id: EmployeeId,
-        member_id: EmployeeId,
+        member_id: MemberId,
         dues: f32,
     },
     ChgNoMember {
